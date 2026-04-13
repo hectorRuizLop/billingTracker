@@ -18,6 +18,25 @@
     "requires": {
       "[production]": {
         "auth": "xsuaa"
+      },
+      "[development]": {
+        "auth": {
+          "kind": "mocked",
+          "users": {
+            "employee1": {
+              "password": "pass",
+              "roles": ["Employee"]
+            },
+            "manager1": {
+              "password": "pass",
+              "roles": ["Manager", "Employee"]
+            },
+            "admin1": {
+              "password": "pass",
+              "roles": ["Admin", "Manager", "Employee"]
+            }
+          }
+        }
       }
     }
   }
