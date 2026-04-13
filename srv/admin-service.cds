@@ -2,7 +2,6 @@ using {my.billing as db} from '../db/schema';
 
 service AdminService @(path: '/api/admin')@(requires: 'Admin') {
 
-    @odata.draft.enabled
     entity Employees          as projection on db.Employees;
 
     entity Clients            as projection on db.Clients;
