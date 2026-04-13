@@ -1,23 +1,42 @@
-using { my.billing as db } from '../db/schema';
+using {my.billing as db} from '../db/schema';
 
-service EmployeeService @(path: '/api/employee')
-  @(requires: ['Employee', 'Manager', 'Admin']) {
-
-  @readonly
-  entity MyProjects as projection on db.Projects {
-    key ID,
-    name,
-    status,
-    client.name    as clientName  : String,
-    manager.firstName as managerName : String
-  };
+service EmployeeService @(path: '/api/employee')@(requires: [
+  'Employee',
+  'Manager',
+  'Admin'
+]) {
 
   @readonly
-  entity MyAssignments as projection on db.ProjectAssignments {
-    key ID,
-    project.name as projectName : String,
-    project.ID   as projectId   : UUID,
-    assignedAt,
-    isActive
-  };
+  @restrict: [{
+    grant: 'READ',
+    to   : [
+      'Manager',
+      'Admin'
+    ],
+    where: 'manager_ID = $user'
+  }]
+  entity MyProjects    as
+    projection on db.Projects {
+      key ID,
+          name,
+          status,
+          manager.ID        as manager_ID  : UUID,
+          client.name       as clientName  : String,
+          manager.firstName as managerName : String
+    };
+
+  @readonly
+  @restrict: [{
+    grant: 'READ',
+    where: 'employee_ID = $user'
+  }]
+  entity MyAssignments as
+    projection on db.ProjectAssignments {
+      key ID,
+          employee.ID  as employee_ID : UUID,
+          project.name as projectName : String,
+          project.ID   as projectId   : UUID,
+          assignedAt,
+          isActive
+    };
 }

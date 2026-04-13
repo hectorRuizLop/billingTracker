@@ -17,23 +17,42 @@
   "cds": {
     "requires": {
       "[production]": {
-        "auth": "xsuaa"
+        "auth": "xsuaa",
+        "db": {
+          "kind": "hana"
+        }
       },
       "[development]": {
+        "db": {
+          "kind": "hana"
+        },
         "auth": {
           "kind": "mocked",
           "users": {
-            "employee1": {
+            "20000000-0000-0000-0000-000000000001": {
               "password": "pass",
-              "roles": ["Employee"]
+              "roles": ["Employee"],
+              "attr": { "email": "hector.ruiz@nubexx.com" }
             },
-            "manager1": {
+            "20000000-0000-0000-0000-000000000002": {
               "password": "pass",
-              "roles": ["Manager", "Employee"]
+              "roles": ["Employee"],
+              "attr": { "email": "minerva.jimenez@nubexx.com" }
             },
-            "admin1": {
+            "20000000-0000-0000-0000-000000000003": {
               "password": "pass",
-              "roles": ["Admin", "Manager", "Employee"]
+              "roles": ["Manager", "Employee"],
+              "attr": { "email": "alejandro.martinez@nubexx.com" }
+            },
+            "20000000-0000-0000-0000-000000000004": {
+              "password": "pass",
+              "roles": ["Manager", "Employee"],
+              "attr": { "email": "alejandro.lopez@nubexx.com" }
+            },
+            "20000000-0000-0000-0000-000000000005": {
+              "password": "pass",
+              "roles": ["Admin", "Manager", "Employee"],
+              "attr": { "email": "jaime.ojeda@nubexx.com" }
             }
           }
         }
