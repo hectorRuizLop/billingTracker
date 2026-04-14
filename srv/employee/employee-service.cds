@@ -1,4 +1,4 @@
-using {my.billing as db} from '../db/schema';
+using {my.billing as db} from '../../db/schema';
 
 service EmployeeService @(path: '/api/employee')@(requires: [
   'Employee',

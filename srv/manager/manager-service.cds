@@ -1,4 +1,4 @@
-using {my.billing as db} from '../db/schema';
+using {my.billing as db} from '../../db/schema';
 
 service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
 
