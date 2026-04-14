@@ -4,7 +4,7 @@ module.exports = class ManagerService extends cds.ApplicationService {
 
   async init() {
     const db = await cds.connect.to('db');
-    const { Employees, Categories } = db.entities('my.billing');
+    const { Employees, Categories } = cds.entities('my.billing');
 
     // Auto-fill rateSnapshot, month, year on TimeEntry creation
     this.before('CREATE', 'TimeEntries', async (req) => {
@@ -24,7 +24,7 @@ module.exports = class ManagerService extends cds.ApplicationService {
         }
       }
     });
-    await super.init();
+    return super.init();
   }
 
 };

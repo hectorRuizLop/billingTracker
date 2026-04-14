@@ -31,7 +31,7 @@ module.exports = class AdminService extends cds.ApplicationService {
         description: `Client '${client.name}' created.`,
       });
     });
-    
+    return super.init();
   }
 
 };

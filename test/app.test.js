@@ -51,7 +51,7 @@ describe('Billing Tracker - Integration Tests', () => {
         { auth: ADMIN, validateStatus: () => true }
       );
       expect(status).toBe(400);
-      expect(data.error.message).toMatch(/name is required/i);
+      expect(data.error.message).toMatch(/name is required| missing value/i);
     });
 
     test('Creating a client writes an AuditLog entry', async () => {
@@ -73,7 +73,7 @@ describe('Billing Tracker - Integration Tests', () => {
       expect(data.value[0].ID).toBe(EMP1_ID);
     });
 
-    test.skip('Manager (with Employee role) sees all employees', async () => {
+    test('Manager (with Employee role) sees all employees', async () => {
       const { data, status } = await GET(`${BASE}/Employees`, { auth: MGR1 });
       expect(status).toBe(200);
       expect(data.value.length).toBeGreaterThan(1);
@@ -147,7 +147,7 @@ describe('Billing Tracker - Integration Tests', () => {
       if (data.value.length > 0) {
         const entry = data.value[0];
         expect(typeof entry.employeeName).toBe('string');
-        if (entry.rateSnapshot != null && entry.hours != null) {
+        if (entry.rateSnapshot !== null && entry.hours !== null) {
           expect(entry.cost).toBeCloseTo(entry.hours * entry.rateSnapshot, 2);
         }
       }

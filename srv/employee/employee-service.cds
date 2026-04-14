@@ -32,7 +32,8 @@ service EmployeeService @(path: '/api/employee')@(requires: [
         status,
         manager.ID        as manager_ID  : UUID,
         client.name       as clientName  : String,
-        manager.firstName as managerName : String
+        manager.firstName as managerName : String,
+        assignments : redirected to MyAssignments on assignments.projectId = $self.ID
   };
 
   @readonly
