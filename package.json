@@ -24,7 +24,8 @@
       },
       "[development]": {
         "db": {
-          "kind": "sqlite"
+          "kind": "sqlite",
+          "credentials": { "url": "db.sqlite" }
         },
         "auth": {
           "kind": "mocked",

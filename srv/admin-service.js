@@ -3,8 +3,7 @@ const cds = require('@sap/cds');
 module.exports = class AdminService extends cds.ApplicationService {
 
   async init() {
-    const db = await cds.connect.to('db');
-    const { Employees, Clients, AuditLog } = db.entities('my.billing');
+    const { AuditLog } = this.entities;
 
     this.before('CREATE', 'Clients', (req) => {
       const { name, email } = req.data;
@@ -31,6 +30,7 @@ module.exports = class AdminService extends cds.ApplicationService {
         description: `Client '${client.name}' created.`,
       });
     });
+    await super.init();
   }
 
 };

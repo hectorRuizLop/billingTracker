@@ -6,6 +6,17 @@ service EmployeeService @(path: '/api/employee')@(requires: [
   'Admin'
 ]) {
 
+  @restrict: [{ grant: 'READ', to: ['Manager', 'Admin'] }]
+  entity Employees as projection on db.Employees {
+    key ID,
+        firstName,
+        lastName,
+        email,
+        role,
+        isActive,
+        category.name as categoryName : String
+  };
+
   @readonly
   @restrict: [{
     grant: 'READ',

@@ -1,0 +1,8 @@
+@baseUrl = http://localhost:4004/api/admin
+@adminUser = 20000000-0000-0000-0000-000000000005
+@adminPass = pass
+
+# All employees
+GET {{baseUrl}}/Employees
+Authorization: Basic {{adminUser}} {{adminPass}}
+
