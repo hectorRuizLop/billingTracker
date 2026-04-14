@@ -1,0 +1,47 @@
+@baseUrl = http://localhost:4004/api/manager
+
+# Manager: Alejandro Martínez (manages projects 1 & 3)
+@managerUser1 = 20000000-0000-0000-0000-000000000003
+# Manager: Alejandro López (manages project 2)
+@managerUser2 = 20000000-0000-0000-0000-000000000004
+@pass = pass
+
+# ─────────────────────────────────────────────
+# READ
+# ─────────────────────────────────────────────
+
+### Get all time entries for manager (Alejandro Martínez — projects 1 & 3)
+GET {{baseUrl}}/TimeEntries
+Authorization: Basic {{managerUser1}} {{pass}}
+
+###
+
+### Get all time entries for manager (Alejandro López — project 2)
+GET {{baseUrl}}/TimeEntries
+Authorization: Basic {{managerUser2}} {{pass}}
+
+###
+
+### Get a specific time entry by ID
+GET {{baseUrl}}/TimeEntries/60000000-0000-0000-0000-000000000001
+Authorization: Basic {{managerUser1}} {{pass}}
+
+###
+
+### Filter time entries by project (Customer Portal)
+GET {{baseUrl}}/TimeEntries?$filter=project_ID eq 40000000-0000-0000-0000-000000000001
+Authorization: Basic {{managerUser1}} {{pass}}
+
+###
+
+### Filter time entries by employee (Héctor Ruiz)
+GET {{baseUrl}}/TimeEntries?$filter=employee_ID eq 20000000-0000-0000-0000-000000000001
+Authorization: Basic {{managerUser1}} {{pass}}
+
+### Submitted entries
+GET {{baseUrl}}/TimeEntries?$filter=status eq 'S'
+Authorization: Basic {{managerUser1}} {{pass}}
+
+### Select computed summary fields (employeeName, categoryName, projectName, cost)
+GET {{baseUrl}}/TimeEntries?$select=ID,date,hours,status,employeeName,categoryName,projectName,cost
+Authorization: Basic {{managerUser1}} {{pass}}
