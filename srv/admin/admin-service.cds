@@ -11,12 +11,6 @@ service AdminService @(path: '/api/admin')@(requires: 'Admin') {
     entity AuditLog           as projection on db.AuditLog;
     entity Notifications      as projection on db.Notifications;
 
-    // Create client
-    annotate Clients with @(restrict: [{
-        grant: '*',
-        to   : 'Admin'
-    }]);
-
     action changeEmployeeRole(employeeId: UUID, newRole: String) returns String;
 
     action reactivateClient(clientId: UUID)                      returns String;
