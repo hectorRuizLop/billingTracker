@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+jobs:
+  ci:
+    name: Install / Lint / Build / Test / Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      - name: Build (cds build --production)
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Run tests (Jest)
+        run: npm test
+        env:
+          NODE_ENV: development
+
+      - name: Security audit
+        run: npm audit --audit-level=high --production
