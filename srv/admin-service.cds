@@ -1,4 +1,4 @@
-using {my.billing as db} from '../../db/schema';
+using {my.billing as db} from '../db/schema';
 
 service AdminService @(path: '/api/admin')@(requires: 'Admin') {
 
@@ -8,11 +8,10 @@ service AdminService @(path: '/api/admin')@(requires: 'Admin') {
   entity ProjectAssignments as projection on db.ProjectAssignments;
   entity TimeEntries        as projection on db.TimeEntries;
   entity Categories         as projection on db.Categories;
-  entity AuditLog           as projection on db.AuditLog;
+  entity AuditLogs          as projection on db.AuditLogs;
   entity Notifications      as projection on db.Notifications;
 
   action changeEmployeeRole(employeeId: UUID, newRole: String) returns String;
-
   action reactivateClient(clientId: UUID)                      returns String;
 
 }

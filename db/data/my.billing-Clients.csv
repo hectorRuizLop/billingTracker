@@ -1,4 +1,4 @@
-ID,name,email,phone,address,taxId,contactName,notes,isDeleted
+ID,Name,Email,Phone,Address,TaxId,ContactName,Notes,IsDeleted
 30000000-0000-0000-0000-000000000001,TechCorp SA de CV,contacto@techcorp.mx,+52 55 9000 1111,Av. Insurgentes Sur 1234 CDMX,TCO010101AAA,Roberto Sanchez,Priority client,false
 30000000-0000-0000-0000-000000000002,Innovate MX,hola@innovatemx.com,+52 33 9000 2222,Av. Lopez Mateos 567 Guadalajara,INO020202BBB,Patricia Flores,Long-term project client,false
 30000000-0000-0000-0000-000000000003,DataSoft Inc,info@datasoft.io,+52 81 9000 3333,Calzada del Valle 890 Monterrey,DSI030303CCC,Carlos Mendoza,Growing startup,false
