@@ -1,4 +1,4 @@
-using {my.billing as db} from '../../db/schema';
+using {my.billing as db} from '../db/schema';
 
 service EmployeeService @(path: '/api/employee')@(requires: [
   'Employee',
@@ -23,12 +23,12 @@ service EmployeeService @(path: '/api/employee')@(requires: [
   entity Employees     as
     projection on db.Employees {
       key ID,
-          firstName,
-          lastName,
-          email,
-          role,
-          isActive,
-          category.name as categoryName : String
+          FirstName,
+          LastName,
+          Email,
+          Role,
+          IsActive,
+          category.Name as CategoryName : String
     };
 
   // Employees see only projects they are assigned to; Managers see projects they manage
@@ -51,13 +51,13 @@ service EmployeeService @(path: '/api/employee')@(requires: [
   entity MyProjects    as
     projection on db.Projects {
       key ID,
-          name,
-          status,
+          Name,
+          Status,
           manager.ID        as manager_ID  : UUID,
-          client.name       as clientName  : String,
-          manager.firstName as managerName : String,
+          client.Name       as ClientName  : String,
+          manager.FirstName as ManagerName : String,
           assignments                      : redirected to MyAssignments
-                                               on assignments.projectId = $self.ID
+                                               on assignments.ProjectId = $self.ID
     };
 
   @readonly
@@ -69,11 +69,11 @@ service EmployeeService @(path: '/api/employee')@(requires: [
   entity MyAssignments as
     projection on db.ProjectAssignments {
       key ID,
-          employee.ID  as employee_ID : UUID,
-          project.name as projectName : String,
-          project.ID   as projectId   : UUID,
-          assignedAt,
-          isActive
+          employee.ID   as employee_ID : UUID,
+          project.Name  as ProjectName : String,
+          project.ID    as ProjectId   : UUID,
+          AssignedAt,
+          IsActive
     };
 
   // Employees can read and create only their own time entries
@@ -88,15 +88,15 @@ service EmployeeService @(path: '/api/employee')@(requires: [
   entity MyTimeEntries as
     projection on db.TimeEntries {
       key ID,
-          date,
-          hours,
-          description,
-          status,
-          rejectionNote,
+          Date,
+          Hours,
+          Description,
+          Status,
+          RejectionNote,
           employee.ID  as employee_ID : UUID,
           project.ID   as project_ID  : UUID,
-          project.name as projectName : String,
-          month,
-          year
+          project.Name as ProjectName : String,
+          Month,
+          Year
     };
 }

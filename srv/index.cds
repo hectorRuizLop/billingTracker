@@ -1,3 +1,3 @@
-using from './admin/admin-service';
-using from './employee/employee-service';
-using from './manager/manager-service';
+using from './admin-service';
+using from './employee-service';
+using from './manager-service';
