@@ -1,4 +1,4 @@
-ID,firstName,lastName,email,phone,role,isActive,category_ID
+ID,FirstName,LastName,Email,Phone,Role,IsActive,category_ID
 20000000-0000-0000-0000-000000000001,Héctor,Ruiz,hector.ruiz@nubexx.com,+52 55 1234 5678,E,true,10000000-0000-0000-0000-000000000001
 20000000-0000-0000-0000-000000000002,Minerva,Jiménez,minerva.jimenez@nubexx.com,+52 55 2345 6789,E,true,10000000-0000-0000-0000-000000000001
 20000000-0000-0000-0000-000000000003,Alejandro,Martínez,alejandro.martinez@nubexx.com,+52 55 3456 7890,M,true,10000000-0000-0000-0000-000000000004

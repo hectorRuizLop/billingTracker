@@ -6,83 +6,79 @@ using {
 } from '@sap/cds/common';
 
 type CategoryCode    : String(1) enum {
-  Junior = 'J';
+  Junior   = 'J';
   MidLevel = 'M';
-  Senior = 'S';
-  Lead = 'L';
+  Senior   = 'S';
+  Lead     = 'L';
 }
 
 type TimeEntryStatus : String(1) enum {
-  Draft = 'D';
+  Draft     = 'D';
   Submitted = 'S';
-  Approved = 'A';
-  Rejected = 'R';
+  Approved  = 'A';
+  Rejected  = 'R';
 }
 
 type ProjectStatus   : String(1) enum {
-  Open = 'O';
+  Open   = 'O';
   Closed = 'C';
 }
 
 type UserRole        : String(1) enum {
   Employee = 'E';
-  Manager = 'M';
-  Admin = 'A';
+  Manager  = 'M';
+  Admin    = 'A';
 }
 
 entity Categories : cuid {
-  code        : CategoryCode   @mandatory;
-  name        : String(50)     @mandatory;
-  rate        : Decimal(10, 2) @mandatory;
-  description : String(200);
+  Code        : CategoryCode   @mandatory;
+  Name        : String(50)     @mandatory;
+  Rate        : Decimal(10, 2) @mandatory;
+  Description : String(200);
 }
 
 entity Employees : cuid, managed {
-  firstName       : String(50)  @mandatory;
-  lastName        : String(50)  @mandatory;
-  email           : String(100) @mandatory;
-  phone           : String(20);
-  role            : UserRole default 'E';
-  isActive        : Boolean default true;
-
+  FirstName       : String(50)  @mandatory;
+  LastName        : String(50)  @mandatory;
+  Email           : String(100) @mandatory;
+  Phone           : String(20);
+  Role            : UserRole default 'E';
+  IsActive        : Boolean default true;
 
   category        : Association to Categories;
   assignments     : Association to many ProjectAssignments
                       on assignments.employee = $self;
-
   timeEntries     : Association to many TimeEntries
                       on timeEntries.employee = $self;
-
   managedProjects : Association to many Projects
                       on managedProjects.manager = $self;
 }
 
-
 entity Clients : cuid, managed {
-  name        : String(100) @mandatory;
-  email       : String(100) @mandatory;
-  phone       : String(20);
-  address     : String(300);
-  taxId       : String(20);
-  contactName : String(100);
-  notes       : String(500);
-  isDeleted   : Boolean default false;
-  deletedAt   : Timestamp;
-  deletedBy   : String;
+  Name        : String(100) @mandatory;
+  Email       : String(100) @mandatory;
+  Phone       : String(20);
+  Address     : String(300);
+  TaxId       : String(20);
+  ContactName : String(100);
+  Notes       : String(500);
+  IsDeleted   : Boolean default false;
+  DeletedAt   : Timestamp;
+  DeletedBy   : String;
 
   projects    : Association to many Projects
                   on projects.client = $self;
 }
 
 entity Projects : cuid, managed {
-  name        : String(150)              @mandatory;
-  description : String(500);
-  status      : ProjectStatus default 'O';
-  budget      : Decimal(15, 2)           @mandatory;
-  startDate   : Date;
-  endDate     : Date;
-  closedAt    : Timestamp;
-  closedBy    : String;
+  Name        : String(150)              @mandatory;
+  Description : String(500);
+  Status      : ProjectStatus default 'O';
+  Budget      : Decimal(15, 2)           @mandatory;
+  StartDate   : Date;
+  EndDate     : Date;
+  ClosedAt    : Timestamp;
+  ClosedBy    : String;
 
   client      : Association to Clients   @mandatory;
   manager     : Association to Employees @mandatory;
@@ -96,53 +92,51 @@ entity Projects : cuid, managed {
 entity ProjectAssignments : cuid, managed {
   project    : Association to Projects  @mandatory;
   employee   : Association to Employees @mandatory;
-  assignedAt : Date default $now;
-  isActive   : Boolean default true;
-  customRate : Decimal(10, 2); // Allows a manager assign a worker in a project with different tarif
-
+  AssignedAt : Date default $now;
+  IsActive   : Boolean default true;
+  CustomRate : Decimal(10, 2); // Allows a manager to assign a worker with a different rate
 }
 
 entity TimeEntries : cuid, managed {
-  date          : Date                     @mandatory;
-  hours         : Decimal(4, 2)            @mandatory;
-  description   : String(500);
+  Date          : Date                     @mandatory;
+  Hours         : Decimal(4, 2)            @mandatory;
+  Description   : String(500);
 
-  status        : TimeEntryStatus default 'D';
-  reviewedAt    : Timestamp;
-  reviewedBy    : String;
-  rejectionNote : String(500);
+  Status        : TimeEntryStatus default 'D';
+  ReviewedAt    : Timestamp;
+  ReviewedBy    : String;
+  RejectionNote : String(500);
 
-  rateSnapshot  : Decimal(10, 2);
+  RateSnapshot  : Decimal(10, 2);
 
   employee      : Association to Employees @mandatory;
   project       : Association to Projects  @mandatory;
 
-  month         : Integer;
-  year          : Integer;
+  Month         : Integer;
+  Year          : Integer;
 }
 
-
-entity AuditLog : cuid {
-  timestamp   : Timestamp @cds.on.insert: $now;
-  user        : String(100);
-  action      : String(20); // CREATE, UPDATE, DELETE
-  entity_name : String(100);
-  entityId    : String(36);
-  field       : String(50);
-  oldValue    : String(500);
-  newValue    : String(500);
-  description : String(500);
+entity AuditLogs : cuid {
+  Timestamp  : Timestamp @cds.on.insert: $now;
+  User       : String(100);
+  Action     : String(20); // CREATE, UPDATE, DELETE
+  EntityName : String(100);
+  EntityId   : String(36);
+  Field      : String(50);
+  OldValue   : String(500);
+  NewValue   : String(500);
+  Description: String(500);
 }
 
 entity Notifications : cuid {
-  sentAt          : Timestamp @cds.on.insert: $now;
-  type            : String(50);
-  recipient       : String(100);
-  subject         : String(200);
-  body            : LargeString;
-  status          : String(1) default 'P'; // P=Pending, S=Sent, F=Failed
-  errorMessage    : String(500);
-  retryCount      : Integer default 0;
+  SentAt          : Timestamp @cds.on.insert: $now;
+  Type            : String(50);
+  Recipient       : String(100);
+  Subject         : String(200);
+  Body            : LargeString;
+  Status          : String(1) default 'P'; // P=Pending, S=Sent, F=Failed
+  ErrorMessage    : String(500);
+  RetryCount      : Integer default 0;
 
   relatedProject  : Association to Projects;
   relatedEmployee : Association to Employees;
