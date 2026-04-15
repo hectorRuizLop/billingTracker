@@ -38,7 +38,7 @@ describe('Billing Tracker - Integration Tests', () => {
 
     test('Admin can create a valid client', async () => {
       const { data, status } = await POST(`${BASE}/Clients`,
-        { Name: 'Test Corp SA', Email: 'testcorp@nubexx.com', Phone: '+52 55 0000 0001' },
+        { name: 'Test Corp SA', email: 'testcorp@nubexx.com', phone: '+52 55 0000 0001' },
         { auth: ADMIN }
       );
       expect(status).toBe(201);
@@ -47,7 +47,7 @@ describe('Billing Tracker - Integration Tests', () => {
 
     test('Rejects client with empty name', async () => {
       const { status, data } = await POST(`${BASE}/Clients`,
-        { Name: '', Email: 'ok@nubexx.com' },
+        { name: '', email: 'ok@nubexx.com' },
         { auth: ADMIN, validateStatus: () => true }
       );
       expect(status).toBe(400);
@@ -56,13 +56,13 @@ describe('Billing Tracker - Integration Tests', () => {
 
     test('Creating a client writes an AuditLog entry', async () => {
       const clientName = 'Audit Target Corp';
-      await POST(`${BASE}/Clients`, { Name: clientName, Email: 'audit@nubexx.com' }, { auth: ADMIN });
+      await POST(`${BASE}/Clients`, { name: clientName, email: 'audit@nubexx.com' }, { auth: ADMIN });
       const { data } = await GET(
-        `${BASE}/AuditLogs?$filter=EntityName eq 'Clients'&$orderby=Timestamp desc&$top=1`,
+        `${BASE}/AuditLogs?$filter=entityName eq 'Clients'&$orderby=timestamp desc&$top=1`,
         { auth: ADMIN }
       );
       expect(data.value).toHaveLength(1);
-      expect(data.value[0].Action).toBe('CREATE');
+      expect(data.value[0].action).toBe('CREATE');
     });
   });
 
@@ -100,7 +100,7 @@ describe('Billing Tracker - Integration Tests', () => {
 
     test('Employee can create a time entry', async () => {
       const { data, status } = await POST(`${BASE}/MyTimeEntries`, {
-          Date: '2026-04-10', Hours: 6, Description: 'Unit test entry',
+          date: '2026-04-10', hours: 6, description: 'Unit test entry',
           employee_ID: EMP1_ID, project_ID: PROJECT_CP
         }, { auth: EMP1 }
       );
@@ -110,7 +110,7 @@ describe('Billing Tracker - Integration Tests', () => {
 
     test('EMP2 cannot read a time entry owned by EMP1', async () => {
       const { data: created } = await POST(`${BASE}/MyTimeEntries`, {
-          Date: '2026-04-12', Hours: 2, Description: 'Private',
+          date: '2026-04-12', hours: 2, description: 'Private',
           employee_ID: EMP1_ID, project_ID: PROJECT_CP
         }, { auth: EMP1 }
       );
@@ -136,7 +136,7 @@ describe('Billing Tracker - Integration Tests', () => {
     });
 
     test('MGR1 can update the budget on their own project', async () => {
-      const { status } = await PATCH(`${BASE}/Projects/${PROJECT_CP}`, { Budget: 160000.00 }, { auth: MGR1 });
+      const { status } = await PATCH(`${BASE}/Projects/${PROJECT_CP}`, { budget: 160000.00 }, { auth: MGR1 });
       expect(status).toBe(200);
     });
 
@@ -146,12 +146,12 @@ describe('Billing Tracker - Integration Tests', () => {
     });
 
     test('Time entries expose computed fields: EmployeeName and Cost', async () => {
-      const { data } = await GET(`${BASE}/TimeEntries?$select=ID,Hours,RateSnapshot,EmployeeName,Cost`, { auth: MGR1 });
+      const { data } = await GET(`${BASE}/TimeEntries?$select=ID,hours,rateSnapshot,employeeName,cost`, { auth: MGR1 });
       if (data.value.length > 0) {
         const entry = data.value[0];
-        expect(typeof entry.EmployeeName).toBe('string');
-        if (entry.RateSnapshot !== null && entry.Hours !== null) {
-          expect(entry.Cost).toBeCloseTo(entry.Hours * entry.RateSnapshot, 2);
+        expect(typeof entry.employeeName).toBe('string');
+        if (entry.rateSnapshot !== null && entry.hours !== null) {
+          expect(entry.cost).toBeCloseTo(entry.hours * entry.rateSnapshot, 2);
         }
       }
     });

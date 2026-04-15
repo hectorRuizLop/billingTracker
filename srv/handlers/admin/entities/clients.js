@@ -8,15 +8,15 @@ const cds = require('@sap/cds');
  * @param {import('@sap/cds').Request} req - Objeto de petición CAP
  */
 async function beforeCreate(req) {
-  const { Name, Email } = req.data;
+  const { name, email } = req.data;
 
-  if (!Name?.trim())
+  if (!name?.trim())
     return req.error(400, 'Client name is required.');
 
-  if (!Email?.trim())
+  if (!email?.trim())
     return req.error(400, 'Client email is required.');
 
-  if (!Email.endsWith('@nubexx.com'))
+  if (!email.endsWith('@nubexx.com'))
     return req.error(400, 'Client email must end with @nubexx.com');
 }
 
@@ -28,14 +28,14 @@ async function beforeCreate(req) {
 async function afterCreate(client, req) {
   const { AuditLogs } = cds.entities('my.billing');
   await INSERT.into(AuditLogs).entries({
-    User:        req.user?.id ?? 'system',
-    Action:      'CREATE',
-    EntityName:  'Clients',
-    EntityId:    client.ID,
-    Field:       null,
-    OldValue:    null,
-    NewValue:    JSON.stringify({ Name: client.Name, Email: client.Email }),
-    Description: `Client '${client.Name}' created.`,
+    user:        req.user?.id ?? 'system',
+    action:      'CREATE',
+    entityName:  'Clients',
+    entityId:    client.ID,
+    field:       null,
+    oldValue:    null,
+    newValue:    JSON.stringify({ name: client.name, email: client.email }),
+    description: `Client '${client.name}' created.`,
   });
 }
 

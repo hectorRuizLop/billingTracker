@@ -16,11 +16,11 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
     projection on db.TimeEntries {
       *,
       (
-        employee.FirstName || ' ' || employee.LastName
-      )                      as EmployeeName : String,
-      employee.category.Name as CategoryName,
-      project.Name           as ProjectName,
-      Hours * RateSnapshot   as Cost         : Decimal(15, 2)
+        employee.firstName || ' ' || employee.lastName
+      )                       as employeeName : String,
+      employee.category.name  as categoryName,
+      project.name            as projectName,
+      hours * rateSnapshot    as cost         : Decimal(15, 2)
     };
 
   @restrict: [{
