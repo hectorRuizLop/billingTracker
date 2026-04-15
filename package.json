@@ -11,7 +11,8 @@
     "@cap-js/sqlite": "^2",
     "@sap/cds-dk": "^9",
     "eslint": "^10",
-    "jest": "^29"
+    "jest": "^29",
+    "@sap/eslint-plugin-cds": "^4"
   },
   "scripts": {
     "start": "cds-serve",
@@ -25,35 +26,61 @@
       "[test]": {
         "db": {
           "kind": "sqlite",
-          "credentials": { "url": ":memory:" }
+          "credentials": {
+            "url": ":memory:"
+          }
         },
         "auth": {
           "kind": "mocked",
           "users": {
             "20000000-0000-0000-0000-000000000001": {
               "password": "pass",
-              "roles": ["Employee"],
-              "attr": { "email": "hector.ruiz@nubexx.com" }
+              "roles": [
+                "Employee"
+              ],
+              "attr": {
+                "email": "hector.ruiz@nubexx.com"
+              }
             },
             "20000000-0000-0000-0000-000000000002": {
               "password": "pass",
-              "roles": ["Employee"],
-              "attr": { "email": "minerva.jimenez@nubexx.com" }
+              "roles": [
+                "Employee"
+              ],
+              "attr": {
+                "email": "minerva.jimenez@nubexx.com"
+              }
             },
             "20000000-0000-0000-0000-000000000003": {
               "password": "pass",
-              "roles": ["Manager", "Employee"],
-              "attr": { "email": "alejandro.martinez@nubexx.com" }
+              "roles": [
+                "Manager",
+                "Employee"
+              ],
+              "attr": {
+                "email": "alejandro.martinez@nubexx.com"
+              }
             },
             "20000000-0000-0000-0000-000000000004": {
               "password": "pass",
-              "roles": ["Manager", "Employee"],
-              "attr": { "email": "alejandro.lopez@nubexx.com" }
+              "roles": [
+                "Manager",
+                "Employee"
+              ],
+              "attr": {
+                "email": "alejandro.lopez@nubexx.com"
+              }
             },
             "20000000-0000-0000-0000-000000000005": {
               "password": "pass",
-              "roles": ["Admin", "Manager", "Employee"],
-              "attr": { "email": "jaime.ojeda@nubexx.com" }
+              "roles": [
+                "Admin",
+                "Manager",
+                "Employee"
+              ],
+              "attr": {
+                "email": "jaime.ojeda@nubexx.com"
+              }
             }
           }
         }

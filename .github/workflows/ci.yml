@@ -8,7 +8,7 @@ on:
 
 jobs:
   ci:
-    name: Install / Lint / Build / Test / Audit
+    name: Install / Lint / CDS Lint / Build / Test / Audit
     runs-on: ubuntu-latest
 
     steps:
@@ -26,6 +26,9 @@ jobs:
 
       - name: Lint (ESLint)
         run: npm run lint
+
+      - name: Lint (CDS)
+        run: npx cds lint .
 
       - name: Build (cds build --production)
         run: npm run build
