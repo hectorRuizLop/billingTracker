@@ -17,10 +17,10 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
       *,
       (
         employee.firstName || ' ' || employee.lastName
-      )                       as employeeName : String,
-      employee.category.name  as categoryName,
-      project.name            as projectName,
-      hours * rateSnapshot    as cost         : Decimal(15, 2)
+      )                      as employeeName : String,
+      employee.category.name as categoryName,
+      project.name           as projectName,
+      hours * rateSnapshot   as cost         : Decimal(15, 2)
     };
 
   @restrict: [{

@@ -1,11 +1,9 @@
-'use strict';
+"use strict";
 
-const cds = require('@sap/cds');
+const cds = require("@sap/cds");
 
 module.exports = class EmployeeService extends cds.ApplicationService {
-
   async init() {
     return super.init();
   }
-
 };

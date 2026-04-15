@@ -6,28 +6,28 @@ using {
 } from '@sap/cds/common';
 
 type CategoryCode    : String(1) enum {
-  Junior   = 'J';
+  Junior = 'J';
   MidLevel = 'M';
-  Senior   = 'S';
-  Lead     = 'L';
+  Senior = 'S';
+  Lead = 'L';
 }
 
 type TimeEntryStatus : String(1) enum {
-  Draft     = 'D';
+  Draft = 'D';
   Submitted = 'S';
-  Approved  = 'A';
-  Rejected  = 'R';
+  Approved = 'A';
+  Rejected = 'R';
 }
 
 type ProjectStatus   : String(1) enum {
-  Open   = 'O';
+  Open = 'O';
   Closed = 'C';
 }
 
 type UserRole        : String(1) enum {
   Employee = 'E';
-  Manager  = 'M';
-  Admin    = 'A';
+  Manager = 'M';
+  Admin = 'A';
 }
 
 entity Categories : cuid {

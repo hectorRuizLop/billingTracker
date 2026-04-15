@@ -40,9 +40,9 @@ service EmployeeService @(path: '/api/employee')@(requires: [
   entity MyAssignments as
     projection on db.ProjectAssignments {
       key ID,
-          employee.ID   as employee_ID : UUID,
-          project.name  as projectName : String,
-          project.ID    as projectId   : UUID,
+          employee.ID  as employee_ID : UUID,
+          project.name as projectName : String,
+          project.ID   as projectId   : UUID,
           assignedAt,
           isActive
     };
@@ -69,11 +69,11 @@ service EmployeeService @(path: '/api/employee')@(requires: [
       key ID,
           name,
           status,
-          manager.ID         as manager_ID  : UUID,
-          client.name        as clientName  : String,
-          manager.firstName  as managerName : String,
-          assignments                       : redirected to MyAssignments
-                                                on assignments.projectId = $self.ID
+          manager.ID        as manager_ID  : UUID,
+          client.name       as clientName  : String,
+          manager.firstName as managerName : String,
+          assignments                      : redirected to MyAssignments
+                                               on assignments.projectId = $self.ID
     };
 
   // Employees can read and create only their own time entries
@@ -93,9 +93,9 @@ service EmployeeService @(path: '/api/employee')@(requires: [
           description,
           status,
           rejectionNote,
-          employee.ID   as employee_ID : UUID,
-          project.ID    as project_ID  : UUID,
-          project.name  as projectName : String,
+          employee.ID  as employee_ID : UUID,
+          project.ID   as project_ID  : UUID,
+          project.name as projectName : String,
           month,
           year
     };
