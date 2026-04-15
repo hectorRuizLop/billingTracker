@@ -5,15 +5,7 @@ const js = require('@eslint/js');
 module.exports = [
   js.configs.recommended,
   {
-    files: ['*.config.js'],
-    languageOptions: {
-      sourceType: 'commonjs',
-      globals: {
-        require: 'readonly',
-        module:  'readonly',
-        exports: 'readonly',
-      },
-    },
+    ignores: ['eslint.config.js', 'jest.config.js'],
   },
   {
     files: ['srv/**/*.js', 'test/**/*.js'],
