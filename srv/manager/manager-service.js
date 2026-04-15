@@ -3,7 +3,6 @@ const cds = require('@sap/cds');
 module.exports = class ManagerService extends cds.ApplicationService {
 
   async init() {
-    const db = await cds.connect.to('db');
     const { Employees, Categories } = cds.entities('my.billing');
 
     // Auto-fill rateSnapshot, month, year on TimeEntry creation
