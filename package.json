@@ -20,6 +20,7 @@
   "scripts": {
     "start": "cds-serve",
     "test": "jest --forceExit",
+    "test:cds": "node test/run-cds-test.js",
     "format": "format-cds -f",
     "arreglar": "format-cds -f && eslint --fix srv/ test/ && prettier --write \"srv/**/*.js\" \"test/**/*.js\"",
     "lint": "eslint srv/ test/",

@@ -1,7 +1,8 @@
 "use strict";
+process.env.NODE_ENV = "test";
 
 const cds = require("@sap/cds");
-const { GET, POST, PATCH } = cds.test(__dirname + "/..");
+const { GET, POST, PATCH, DELETE } = cds.test(__dirname + "/..");
 
 const ADMIN = {
   username: "20000000-0000-0000-0000-000000000005",
@@ -77,22 +78,70 @@ describe("Billing Tracker - Integration Tests", () => {
       expect(data.error.message).toMatch(/name is required| missing value/i);
     });
 
-    // COMENTADO: AuditLogs manual eliminado, sustituido por @cap-js/audit-logging.
-    // El plugin registra automáticamente los cambios en entidades anotadas con @PersonalData.
-    // test("Creating a client writes an AuditLog entry", async () => {
-    //   const clientName = "Audit Target Corp";
-    //   await POST(
-    //     `${BASE}/Clients`,
-    //     { name: clientName, email: "audit@nubexx.com" },
-    //     { auth: ADMIN },
-    //   );
-    //   const { data } = await GET(
-    //     `${BASE}/AuditLogs?$filter=entityName eq 'Clients'&$orderby=timestamp desc&$top=1`,
-    //     { auth: ADMIN },
-    //   );
-    //   expect(data.value).toHaveLength(1);
-    //   expect(data.value[0].action).toBe("CREATE");
-    // });
+    test("Changes employee role to Manager and auto-assigns Lead category", async () => {
+      const { data, status } = await POST(
+        `${BASE}/changeEmployeeRole`,
+        { employeeId: EMP1_ID, newRole: "M" },
+        { auth: ADMIN },
+      );
+      expect(status).toBe(200);
+      expect(data.value).toMatch(/updated/i);
+
+      const { data: emp } = await GET(`${BASE}/Employees/${EMP1_ID}`, {
+        auth: ADMIN,
+      });
+      expect(emp.role).toBe("M");
+      expect(emp.category_ID).toBe("10000000-0000-0000-0000-000000000004");
+    });
+
+    test("Rejects changeEmployeeRole with invalid role code", async () => {
+      const { status } = await POST(
+        `${BASE}/changeEmployeeRole`,
+        { employeeId: EMP1_ID, newRole: "X" },
+        { auth: ADMIN, validateStatus: () => true },
+      );
+      expect(status).toBe(400);
+    });
+
+    test("Soft-deletes a client and hides it from reads", async () => {
+      const { data: created } = await POST(
+        `${BASE}/Clients`,
+        { name: "To Be Deleted SA", email: "del@nubexx.com" },
+        { auth: ADMIN },
+      );
+      const clientId = created.ID;
+
+      const { status: delStatus } = await DELETE(
+        `${BASE}/Clients/${clientId}`,
+        { auth: ADMIN },
+      );
+      expect(delStatus).toBe(204);
+
+      const { data: list } = await GET(`${BASE}/Clients`, { auth: ADMIN });
+      expect(list.value.map((c) => c.ID)).not.toContain(clientId);
+    });
+
+    test("Reactivates a soft-deleted client", async () => {
+      const { data: created } = await POST(
+        `${BASE}/Clients`,
+        { name: "To Reactivate Corp", email: "react@nubexx.com" },
+        { auth: ADMIN },
+      );
+      const clientId = created.ID;
+
+      await DELETE(`${BASE}/Clients/${clientId}`, { auth: ADMIN });
+
+      const { data, status } = await POST(
+        `${BASE}/reactivateClient`,
+        { clientId },
+        { auth: ADMIN },
+      );
+      expect(status).toBe(200);
+      expect(data.value).toMatch(/reactivated/i);
+
+      const { data: list } = await GET(`${BASE}/Clients`, { auth: ADMIN });
+      expect(list.value.map((c) => c.ID)).toContain(clientId);
+    });
   });
 
   describe("EmployeeService", () => {
