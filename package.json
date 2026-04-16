@@ -2,6 +2,7 @@
   "name": "billing-tracker",
   "version": "1.0.0",
   "dependencies": {
+    "@cap-js/audit-logging": "^1",
     "@cap-js/hana": "^2",
     "@sap/cds": "^9",
     "@sap/xssec": "^4"
@@ -27,6 +28,9 @@
   "private": true,
   "cds": {
     "requires": {
+      "audit-log": {
+        "kind": "audit-log-to-console"
+      },
       "[test]": {
         "db": {
           "kind": "sqlite",
@@ -93,6 +97,10 @@
         "auth": "xsuaa",
         "db": {
           "kind": "hana"
+        },
+        "audit-log": {
+          "kind": "audit-log",
+          "outbox": true
         }
       },
       "[development]": {

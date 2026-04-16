@@ -37,10 +37,17 @@ entity Categories : cuid {
   description : String(200);
 }
 
+@PersonalData.EntitySemantics: 'DataSubject'
 entity Employees : cuid, managed {
+  @PersonalData.FieldSemantics: 'DataSubjectID'
+  key ID          : UUID;
+  @PersonalData.IsPotentiallyPersonal
   firstName       : String(50)  @mandatory;
+  @PersonalData.IsPotentiallyPersonal
   lastName        : String(50)  @mandatory;
+  @PersonalData.IsPotentiallyPersonal
   email           : String(100) @mandatory;
+  @PersonalData.IsPotentiallyPersonal
   phone           : String(20);
   role            : UserRole default 'E';
   isActive        : Boolean default true;
@@ -54,12 +61,19 @@ entity Employees : cuid, managed {
                       on managedProjects.manager = $self;
 }
 
+@PersonalData.EntitySemantics: 'DataSubject'
 entity Clients : cuid, managed {
+  @PersonalData.FieldSemantics: 'DataSubjectID'
+  key ID      : UUID;
+  @PersonalData.IsPotentiallyPersonal
   name        : String(100) @mandatory;
+  @PersonalData.IsPotentiallyPersonal
   email       : String(100) @mandatory;
+  @PersonalData.IsPotentiallyPersonal
   phone       : String(20);
   address     : String(300);
   taxId       : String(20);
+  @PersonalData.IsPotentiallyPersonal
   contactName : String(100);
   notes       : String(500);
   isDeleted   : Boolean default false;
@@ -116,28 +130,3 @@ entity TimeEntries : cuid, managed {
   year          : Integer;
 }
 
-entity AuditLogs : cuid {
-  timestamp   : Timestamp @cds.on.insert: $now;
-  user        : String(100);
-  action      : String(20); // CREATE, UPDATE, DELETE
-  entityName  : String(100);
-  entityId    : String(36);
-  field       : String(50);
-  oldValue    : String(500);
-  newValue    : String(500);
-  description : String(500);
-}
-
-entity Notifications : cuid {
-  sentAt          : Timestamp @cds.on.insert: $now;
-  type            : String(50);
-  recipient       : String(100);
-  subject         : String(200);
-  body            : LargeString;
-  status          : String(1) default 'P'; // P=Pending, S=Sent, F=Failed
-  errorMessage    : String(500);
-  retryCount      : Integer default 0;
-
-  relatedProject  : Association to Projects;
-  relatedEmployee : Association to Employees;
-}

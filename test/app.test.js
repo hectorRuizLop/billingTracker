@@ -77,20 +77,22 @@ describe("Billing Tracker - Integration Tests", () => {
       expect(data.error.message).toMatch(/name is required| missing value/i);
     });
 
-    test("Creating a client writes an AuditLog entry", async () => {
-      const clientName = "Audit Target Corp";
-      await POST(
-        `${BASE}/Clients`,
-        { name: clientName, email: "audit@nubexx.com" },
-        { auth: ADMIN },
-      );
-      const { data } = await GET(
-        `${BASE}/AuditLogs?$filter=entityName eq 'Clients'&$orderby=timestamp desc&$top=1`,
-        { auth: ADMIN },
-      );
-      expect(data.value).toHaveLength(1);
-      expect(data.value[0].action).toBe("CREATE");
-    });
+    // COMENTADO: AuditLogs manual eliminado, sustituido por @cap-js/audit-logging.
+    // El plugin registra automáticamente los cambios en entidades anotadas con @PersonalData.
+    // test("Creating a client writes an AuditLog entry", async () => {
+    //   const clientName = "Audit Target Corp";
+    //   await POST(
+    //     `${BASE}/Clients`,
+    //     { name: clientName, email: "audit@nubexx.com" },
+    //     { auth: ADMIN },
+    //   );
+    //   const { data } = await GET(
+    //     `${BASE}/AuditLogs?$filter=entityName eq 'Clients'&$orderby=timestamp desc&$top=1`,
+    //     { auth: ADMIN },
+    //   );
+    //   expect(data.value).toHaveLength(1);
+    //   expect(data.value[0].action).toBe("CREATE");
+    // });
   });
 
   describe("EmployeeService", () => {
