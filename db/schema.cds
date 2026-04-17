@@ -55,6 +55,7 @@ entity Employees : cuid, managed {
       phone           : String(20);
       role            : UserRole default 'E';
       isActive        : Boolean default true;
+      externalId      : String(255);
 
       category        : Association to Categories;
       assignments     : Association to many ProjectAssignments

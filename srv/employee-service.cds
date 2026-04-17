@@ -10,7 +10,7 @@ service EmployeeService @(path: '/api/employee')@(requires: [
     {
       grant: 'READ',
       to   : 'Employee',
-      where: 'ID = $user'
+      where: 'externalId = $user'
     },
     {
       grant: 'READ',
@@ -23,6 +23,7 @@ service EmployeeService @(path: '/api/employee')@(requires: [
   entity Employees     as
     projection on db.Employees {
       key ID,
+          externalId,
           firstName,
           lastName,
           email,
@@ -35,14 +36,15 @@ service EmployeeService @(path: '/api/employee')@(requires: [
   @restrict: [{
     grant: 'READ',
     to   : 'Employee',
-    where: 'employee_ID = $user'
+    where: 'employeeExternalId = $user'
   }]
   entity MyAssignments as
     projection on db.ProjectAssignments {
       key ID,
-          employee.ID  as employee_ID : UUID,
-          project.name as projectName : String,
-          project.ID   as projectId   : UUID,
+          employee.ID         as employee_ID        : UUID,
+          employee.externalId as employeeExternalId : String,
+          project.name        as projectName        : String,
+          project.ID          as projectId          : UUID,
           assignedAt,
           isActive
     };
@@ -53,7 +55,7 @@ service EmployeeService @(path: '/api/employee')@(requires: [
     {
       grant: 'READ',
       to   : 'Employee',
-      where: 'exists assignments[employee_ID = $user]'
+      where: 'exists assignments[employeeExternalId = $user]'
     },
     {
       grant: 'READ',
@@ -61,7 +63,7 @@ service EmployeeService @(path: '/api/employee')@(requires: [
         'Manager',
         'Admin'
       ],
-      where: 'manager_ID = $user'
+      where: 'managerExternalId = $user'
     }
   ]
   entity MyProjects    as
@@ -69,11 +71,12 @@ service EmployeeService @(path: '/api/employee')@(requires: [
       key ID,
           name,
           status,
-          manager.ID        as manager_ID  : UUID,
-          client.name       as clientName  : String,
-          manager.firstName as managerName : String,
-          assignments                      : redirected to MyAssignments
-                                               on assignments.projectId = $self.ID
+          manager.ID         as manager_ID         : UUID,
+          manager.externalId as managerExternalId  : String,
+          client.name        as clientName         : String,
+          manager.firstName  as managerName        : String,
+          assignments                              : redirected to MyAssignments
+                                                       on assignments.projectId = $self.ID
     };
 
   // Employees can read and create only their own time entries
@@ -84,7 +87,7 @@ service EmployeeService @(path: '/api/employee')@(requires: [
       'UPDATE'
     ],
     to   : 'Employee',
-    where: 'employee_ID = $user'
+    where: 'employeeExternalId = $user'
   }]
   entity MyTimeEntries as
     projection on db.TimeEntries {
@@ -94,9 +97,10 @@ service EmployeeService @(path: '/api/employee')@(requires: [
           description,
           status,
           rejectionNote,
-          employee.ID  as employee_ID : UUID,
-          project.ID   as project_ID  : UUID,
-          project.name as projectName : String,
+          employee.ID         as employee_ID        : UUID,
+          employee.externalId as employeeExternalId : String,
+          project.ID          as project_ID         : UUID,
+          project.name        as projectName        : String,
           month,
           year
     };

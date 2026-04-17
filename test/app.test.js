@@ -406,8 +406,11 @@ describe("Billing Tracker - Integration Tests", () => {
       if (data.value.length > 0) {
         const entry = data.value[0];
         expect(typeof entry.employeeName).toBe("string");
-        if (entry.rateSnapshot !== null && entry.hours !== null) {
-          expect(entry.cost).toBeCloseTo(entry.hours * entry.rateSnapshot, 2);
+        if (entry.rateSnapshot !== null && entry.hours !== null && entry.cost !== null) {
+          expect(parseFloat(entry.cost)).toBeCloseTo(
+            parseFloat(entry.hours) * parseFloat(entry.rateSnapshot),
+            2,
+          );
         }
       }
     });

@@ -4,13 +4,13 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
 
   @restrict: [{
     grant: '*',
-    where: 'manager_ID = $user'
+    where: 'manager.externalId = $user'
   }]
   entity Projects           as projection on db.Projects;
 
   @restrict: [{
     grant: 'READ',
-    where: 'project.manager_ID = $user'
+    where: 'project.manager.externalId = $user'
   }]
   entity TimeEntries        as
     projection on db.TimeEntries {
@@ -25,7 +25,7 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
 
   @restrict: [{
     grant: '*',
-    where: 'project.manager_ID = $user'
+    where: 'project.manager.externalId = $user'
   }]
   entity ProjectAssignments as projection on db.ProjectAssignments;
 
