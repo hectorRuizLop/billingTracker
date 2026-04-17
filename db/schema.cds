@@ -39,49 +39,57 @@ entity Categories : cuid {
 
 @PersonalData.EntitySemantics: 'DataSubject'
 entity Employees : cuid, managed {
-  @PersonalData.FieldSemantics: 'DataSubjectID'
-  key ID          : UUID;
-  @PersonalData.IsPotentiallyPersonal
-  firstName       : String(50)  @mandatory;
-  @PersonalData.IsPotentiallyPersonal
-  lastName        : String(50)  @mandatory;
-  @PersonalData.IsPotentiallyPersonal
-  email           : String(100) @mandatory;
-  @PersonalData.IsPotentiallyPersonal
-  phone           : String(20);
-  role            : UserRole default 'E';
-  isActive        : Boolean default true;
+      @PersonalData.FieldSemantics: 'DataSubjectID'
+  key ID              : UUID;
 
-  category        : Association to Categories;
-  assignments     : Association to many ProjectAssignments
-                      on assignments.employee = $self;
-  timeEntries     : Association to many TimeEntries
-                      on timeEntries.employee = $self;
-  managedProjects : Association to many Projects
-                      on managedProjects.manager = $self;
+      @PersonalData.IsPotentiallyPersonal
+      firstName       : String(50)  @mandatory;
+
+      @PersonalData.IsPotentiallyPersonal
+      lastName        : String(50)  @mandatory;
+
+      @PersonalData.IsPotentiallyPersonal
+      email           : String(100) @mandatory;
+
+      @PersonalData.IsPotentiallyPersonal
+      phone           : String(20);
+      role            : UserRole default 'E';
+      isActive        : Boolean default true;
+
+      category        : Association to Categories;
+      assignments     : Association to many ProjectAssignments
+                          on assignments.employee = $self;
+      timeEntries     : Association to many TimeEntries
+                          on timeEntries.employee = $self;
+      managedProjects : Association to many Projects
+                          on managedProjects.manager = $self;
 }
 
 @PersonalData.EntitySemantics: 'DataSubject'
 entity Clients : cuid, managed {
-  @PersonalData.FieldSemantics: 'DataSubjectID'
-  key ID      : UUID;
-  @PersonalData.IsPotentiallyPersonal
-  name        : String(100) @mandatory;
-  @PersonalData.IsPotentiallyPersonal
-  email       : String(100) @mandatory;
-  @PersonalData.IsPotentiallyPersonal
-  phone       : String(20);
-  address     : String(300);
-  taxId       : String(20);
-  @PersonalData.IsPotentiallyPersonal
-  contactName : String(100);
-  notes       : String(500);
-  isDeleted   : Boolean default false;
-  deletedAt   : Timestamp;
-  deletedBy   : String;
+      @PersonalData.FieldSemantics: 'DataSubjectID'
+  key ID          : UUID;
 
-  projects    : Association to many Projects
-                  on projects.client = $self;
+      @PersonalData.IsPotentiallyPersonal
+      name        : String(100) @mandatory;
+
+      @PersonalData.IsPotentiallyPersonal
+      email       : String(100) @mandatory;
+
+      @PersonalData.IsPotentiallyPersonal
+      phone       : String(20);
+      address     : String(300);
+      taxId       : String(20);
+
+      @PersonalData.IsPotentiallyPersonal
+      contactName : String(100);
+      notes       : String(500);
+      isDeleted   : Boolean default false;
+      deletedAt   : Timestamp;
+      deletedBy   : String;
+
+      projects    : Association to many Projects
+                      on projects.client = $self;
 }
 
 entity Projects : cuid, managed {
@@ -129,4 +137,3 @@ entity TimeEntries : cuid, managed {
   month         : Integer;
   year          : Integer;
 }
-

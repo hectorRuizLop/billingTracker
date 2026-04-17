@@ -80,7 +80,8 @@ service EmployeeService @(path: '/api/employee')@(requires: [
   @restrict: [{
     grant: [
       'READ',
-      'CREATE'
+      'CREATE',
+      'UPDATE'
     ],
     to   : 'Employee',
     where: 'employee_ID = $user'

@@ -30,6 +30,7 @@ const PROJECT_CP = "40000000-0000-0000-0000-000000000001";
 const PROJECT_ERP = "40000000-0000-0000-0000-000000000002";
 const ASSIGNMENT_1 = "50000000-0000-0000-0000-000000000001";
 const CLIENT_1 = "30000000-0000-0000-0000-000000000001";
+const TIME_ENTRY_SUBMITTED_EMP1 = "60000000-0000-0000-0000-000000000001";
 
 describe("Billing Tracker - Integration Tests", () => {
   describe("AdminService", () => {
@@ -199,7 +200,7 @@ describe("Billing Tracker - Integration Tests", () => {
       const { data: created } = await POST(
         `${BASE}/MyTimeEntries`,
         {
-          date: "2026-04-12",
+          date: "2026-04-15",
           hours: 2,
           description: "Private",
           employee_ID: EMP1_ID,
@@ -212,6 +213,117 @@ describe("Billing Tracker - Integration Tests", () => {
         validateStatus: () => true,
       });
       expect(res.status).toBe(404);
+    });
+  });
+
+  describe("TimeEntry Validations", () => {
+    const BASE = "/api/employee";
+
+    test("Rejects time entry on a weekend", async () => {
+      const { status, data } = await POST(
+        `${BASE}/MyTimeEntries`,
+        {
+          date: "2026-04-11",
+          hours: 4,
+          description: "Saturday entry",
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+        },
+        { auth: EMP1, validateStatus: () => true },
+      );
+      expect(status).toBe(400);
+      expect(data.error.message).toMatch(/weekend/i);
+    });
+
+    test("Rejects time entry with a future date", async () => {
+      const { status, data } = await POST(
+        `${BASE}/MyTimeEntries`,
+        {
+          date: "2026-04-21",
+          hours: 4,
+          description: "Future entry",
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+        },
+        { auth: EMP1, validateStatus: () => true },
+      );
+      expect(status).toBe(400);
+      expect(data.error.message).toMatch(/future/i);
+    });
+
+    test("Rejects time entry from a previous month", async () => {
+      const { status, data } = await POST(
+        `${BASE}/MyTimeEntries`,
+        {
+          date: "2026-03-16",
+          hours: 4,
+          description: "March entry",
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+        },
+        { auth: EMP1, validateStatus: () => true },
+      );
+      expect(status).toBe(400);
+      expect(data.error.message).toMatch(/current month/i);
+    });
+
+    test("Rejects time entry on a closed project", async () => {
+      await PATCH(
+        `/api/manager/Projects/${PROJECT_CP}`,
+        { status: "C" },
+        { auth: MGR1 },
+      );
+
+      const { status, data } = await POST(
+        `${BASE}/MyTimeEntries`,
+        {
+          date: "2026-04-16",
+          hours: 4,
+          description: "Closed project",
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+        },
+        { auth: EMP1, validateStatus: () => true },
+      );
+      expect(status).toBe(400);
+      expect(data.error.message).toMatch(/open/i);
+
+      await PATCH(
+        `/api/manager/Projects/${PROJECT_CP}`,
+        { status: "O" },
+        { auth: MGR1 },
+      );
+    });
+
+    test("Rejects update on a non-Draft time entry", async () => {
+      const { status, data } = await PATCH(
+        `${BASE}/MyTimeEntries/${TIME_ENTRY_SUBMITTED_EMP1}`,
+        { hours: 6 },
+        { auth: EMP1, validateStatus: () => true },
+      );
+      expect(status).toBe(400);
+      expect(data.error.message).toMatch(/draft/i);
+    });
+
+    test("Allows updating a Draft time entry with a valid date", async () => {
+      const { data: created } = await POST(
+        `${BASE}/MyTimeEntries`,
+        {
+          date: "2026-04-09",
+          hours: 3,
+          description: "Draft to update",
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+        },
+        { auth: EMP1 },
+      );
+
+      const { status } = await PATCH(
+        `${BASE}/MyTimeEntries/${created.ID}`,
+        { hours: 5, description: "Updated hours" },
+        { auth: EMP1 },
+      );
+      expect(status).toBe(200);
     });
   });
 
