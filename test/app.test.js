@@ -29,6 +29,7 @@ const EMP1_ID = "20000000-0000-0000-0000-000000000001";
 const PROJECT_CP = "40000000-0000-0000-0000-000000000001";
 const PROJECT_ERP = "40000000-0000-0000-0000-000000000002";
 const ASSIGNMENT_1 = "50000000-0000-0000-0000-000000000001";
+const CLIENT_1 = "30000000-0000-0000-0000-000000000001";
 
 describe("Billing Tracker - Integration Tests", () => {
   describe("AdminService", () => {
@@ -248,6 +249,41 @@ describe("Billing Tracker - Integration Tests", () => {
         validateStatus: () => true,
       });
       expect(res.status).toBe(404);
+    });
+
+    test("Manager cannot create a project with budget <= 0", async () => {
+      const { status } = await POST(
+        `${BASE}/Projects`,
+        {
+          name: "Bad Budget Project",
+          budget: 0,
+          client_ID: CLIENT_1,
+          manager_ID: MGR1.username,
+        },
+        { auth: MGR1, validateStatus: () => true },
+      );
+      expect(status).toBe(400);
+    });
+
+    test("Manager creates a project and is auto-assigned as billable employee", async () => {
+      const { data, status } = await POST(
+        `${BASE}/Projects`,
+        {
+          name: "Auto Assign Test Project",
+          budget: 75000,
+          client_ID: CLIENT_1,
+          manager_ID: MGR1.username,
+        },
+        { auth: MGR1 },
+      );
+      expect(status).toBe(201);
+
+      const { data: assignments } = await GET(
+        `${BASE}/ProjectAssignments?$filter=project_ID eq '${data.ID}' and employee_ID eq '${MGR1.username}'`,
+        { auth: MGR1 },
+      );
+      expect(assignments.value).toHaveLength(1);
+      expect(assignments.value[0].customRate).toBeTruthy();
     });
 
     test("Time entries expose computed fields: EmployeeName and Cost", async () => {
