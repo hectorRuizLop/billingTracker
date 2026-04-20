@@ -11,7 +11,9 @@ async function beforeCreate(req) {
 
   const { Employees, Categories } = cds.entities("my.billing");
 
-  const manager = await SELECT.one.from(Employees).where({ ID: req.user.id });
+  const manager = await SELECT.one
+    .from(Employees)
+    .where({ externalId: req.user.id });
   let rate = null;
   if (manager?.category_ID) {
     const category = await SELECT.one
@@ -21,11 +23,13 @@ async function beforeCreate(req) {
   }
 
   req.data.assignments = req.data.assignments ?? [];
-  req.data.assignments.push({
-    employee_ID: req.user.id,
-    customRate: rate,
-    isActive: true,
-  });
+  if (manager) {
+    req.data.assignments.push({
+      employee_ID: manager.ID,
+      customRate: rate,
+      isActive: true,
+    });
+  }
 }
 
 module.exports = { beforeCreate };

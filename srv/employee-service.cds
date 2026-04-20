@@ -102,6 +102,7 @@ service EmployeeService @(path: '/api/employee')@(requires: [
           project.ID          as project_ID         : UUID,
           project.name        as projectName        : String,
           month,
-          year
+          year,
+          @readonly rateSnapshot
     };
 }

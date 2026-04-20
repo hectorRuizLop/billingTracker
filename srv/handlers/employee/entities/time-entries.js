@@ -1,6 +1,7 @@
 "use strict";
 
 const cds = require("@sap/cds");
+const { resolveRateSnapshot } = require("../../shared/resolve-rate-snapshot");
 
 function validateDate(date) {
   const d = new Date(date);
@@ -25,7 +26,7 @@ function validateDate(date) {
 
 async function beforeCreate(req) {
   const { Projects } = cds.entities("my.billing");
-  const { date, project_ID, status } = req.data;
+  const { date, project_ID, employee_ID, status } = req.data;
 
   if (status && status !== "D") {
     return req.error(400, "Time entries can only be created in Draft status");
@@ -45,6 +46,10 @@ async function beforeCreate(req) {
     if (project?.status !== "O") {
       return req.error(400, "Hours can only be logged on open projects");
     }
+  }
+
+  if (employee_ID && project_ID && !req.data.rateSnapshot) {
+    req.data.rateSnapshot = await resolveRateSnapshot(employee_ID, project_ID);
   }
 }
 

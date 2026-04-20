@@ -415,4 +415,134 @@ describe("Billing Tracker - Integration Tests", () => {
       }
     });
   });
+
+  describe("rateSnapshot", () => {
+    const EMP_BASE = "/api/employee";
+    const MGR_BASE = "/api/manager";
+
+    test("Employee-created entry gets rateSnapshot from category when no customRate", async () => {
+      let expectedRate = 0;
+      const { data: assignments } = await GET(
+        `${MGR_BASE}/ProjectAssignments?$filter=employee_ID eq '${EMP1_ID}' and project_ID eq '${PROJECT_CP}'`,
+        { auth: MGR1 }
+      );
+      if (assignments && assignments.value && assignments.value.length > 0 && assignments.value[0].customRate !== null) {
+        expectedRate = parseFloat(assignments.value[0].customRate);
+      } else {
+        const { data: emp } = await GET(`/api/admin/Employees/${EMP1_ID}`, { auth: ADMIN });
+        if (emp && emp.category_ID) {
+          const { data: cat } = await GET(`/api/admin/Categories/${emp.category_ID}`, { auth: ADMIN });
+          expectedRate = parseFloat(cat.rate);
+        }
+      }
+
+      const { data: created, status } = await POST(
+        `${EMP_BASE}/MyTimeEntries`,
+        {
+          date: "2026-04-14",
+          hours: 4,
+          description: "rateSnapshot category fallback",
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+        },
+        { auth: EMP1 },
+      );
+      expect(status).toBe(201);
+
+      const { data: entries } = await GET(
+        `${MGR_BASE}/TimeEntries?$filter=ID eq '${created.ID}'`,
+        { auth: MGR1 },
+      );
+      expect(parseFloat(entries.value[0].rateSnapshot)).toBeCloseTo(
+        expectedRate,
+        2,
+      );
+    });
+
+    test("Manager-created entry gets rateSnapshot from category when no customRate", async () => {
+      let expectedRate = 0;
+      const { data: assignments } = await GET(
+        `${MGR_BASE}/ProjectAssignments?$filter=employee_ID eq '${MGR1.username}' and project_ID eq '${PROJECT_CP}'`,
+        { auth: MGR1 }
+      );
+      if (assignments && assignments.value && assignments.value.length > 0 && assignments.value[0].customRate !== null) {
+        expectedRate = parseFloat(assignments.value[0].customRate);
+      } else {
+        const { data: emp } = await GET(`/api/admin/Employees/${MGR1.username}`, { auth: ADMIN });
+        if (emp && emp.category_ID) {
+          const { data: cat } = await GET(`/api/admin/Categories/${emp.category_ID}`, { auth: ADMIN });
+          expectedRate = parseFloat(cat.rate);
+        }
+      }
+
+      const { data: created, status } = await POST(
+        `${EMP_BASE}/MyTimeEntries`,
+        {
+          date: "2026-04-14",
+          hours: 3,
+          description: "manager category fallback",
+          employee_ID: MGR1.username,
+          project_ID: PROJECT_CP,
+        },
+        { auth: MGR1 },
+      );
+      expect(status).toBe(201);
+
+      const { data: entries } = await GET(
+        `${MGR_BASE}/TimeEntries?$filter=ID eq '${created.ID}'`,
+        { auth: MGR1 },
+      );
+      expect(parseFloat(entries.value[0].rateSnapshot)).toBeCloseTo(
+        expectedRate,
+        2,
+      );
+    });
+
+    test("Manager-created entry uses customRate over category rate", async () => {
+      const { data: project } = await POST(
+        `${MGR_BASE}/Projects`,
+        {
+          name: "Custom Rate Test Project",
+          budget: 50000,
+          client_ID: CLIENT_1,
+          manager_ID: MGR1.username,
+        },
+        { auth: MGR1 },
+      );
+
+      const customRate = 200.0;
+      await POST(
+        `${MGR_BASE}/ProjectAssignments`,
+        {
+          employee_ID: EMP1_ID,
+          project_ID: project.ID,
+          customRate,
+          isActive: true,
+        },
+        { auth: MGR1 },
+      );
+
+      const { data: created, status } = await POST(
+        `${EMP_BASE}/MyTimeEntries`,
+        {
+          date: "2026-04-14",
+          hours: 2,
+          description: "custom rate wins",
+          employee_ID: EMP1_ID,
+          project_ID: project.ID,
+        },
+        { auth: EMP1 },
+      );
+      expect(status).toBe(201);
+
+      const { data: entries } = await GET(
+        `${MGR_BASE}/TimeEntries?$filter=ID eq '${created.ID}'`,
+        { auth: MGR1 },
+      );
+      expect(parseFloat(entries.value[0].rateSnapshot)).toBeCloseTo(
+        customRate,
+        2,
+      );
+    });
+  });
 });
