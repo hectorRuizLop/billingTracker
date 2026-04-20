@@ -71,12 +71,12 @@ service EmployeeService @(path: '/api/employee')@(requires: [
       key ID,
           name,
           status,
-          manager.ID         as manager_ID         : UUID,
-          manager.externalId as managerExternalId  : String,
-          client.name        as clientName         : String,
-          manager.firstName  as managerName        : String,
-          assignments                              : redirected to MyAssignments
-                                                       on assignments.projectId = $self.ID
+          manager.ID         as manager_ID        : UUID,
+          manager.externalId as managerExternalId : String,
+          client.name        as clientName        : String,
+          manager.firstName  as managerName       : String,
+          assignments                             : redirected to MyAssignments
+                                                      on assignments.projectId = $self.ID
     };
 
   // Employees can read and create only their own time entries

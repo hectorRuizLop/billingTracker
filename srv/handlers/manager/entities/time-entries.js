@@ -1,6 +1,5 @@
 "use strict";
 
-const cds = require("@sap/cds");
 const { resolveRateSnapshot } = require("../../shared/resolve-rate-snapshot");
 
 async function beforeCreate(req) {
