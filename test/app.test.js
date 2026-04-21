@@ -522,6 +522,101 @@ describe("Billing Tracker - Integration Tests", () => {
       expect(assignments.value[0].customRate).toBeTruthy();
     });
 
+    test("Rejects assignment if employee_ID or project_ID is missing", async () => {
+      const { status } = await POST(
+        `${BASE}/ProjectAssignments`,
+        {
+          project_ID: PROJECT_CP,
+          customRate: 150,
+          isActive: true,
+        },
+        { auth: MGR1, validateStatus: () => true },
+      );
+      expect(status).toBe(400);
+    });
+
+    test("Rejects assignment if employee does not exist", async () => {
+      const { status } = await POST(
+        `${BASE}/ProjectAssignments`,
+        {
+          employee_ID: "99999999-9999-9999-9999-999999999999",
+          project_ID: PROJECT_CP,
+          customRate: 150,
+          isActive: true,
+        },
+        { auth: MGR1, validateStatus: () => true },
+      );
+      expect(status).toBe(400);
+    });
+
+    test("Rejects duplicate project assignment", async () => {
+      const { data: project } = await POST(
+        `${BASE}/Projects`,
+        {
+          name: "Dup Project",
+          budget: 10000,
+          client_ID: CLIENT_1,
+          manager_ID: MGR1.username,
+        },
+        { auth: MGR1 },
+      );
+
+      // Assign first time
+      await POST(
+        `${BASE}/ProjectAssignments`,
+        {
+          employee_ID: EMP1_ID,
+          project_ID: project.ID,
+          customRate: 150,
+          isActive: true,
+        },
+        { auth: MGR1 },
+      );
+
+      // Assign second time (duplicate)
+      const { status, data } = await POST(
+        `${BASE}/ProjectAssignments`,
+        {
+          employee_ID: EMP1_ID,
+          project_ID: project.ID,
+          customRate: 160,
+          isActive: true,
+        },
+        { auth: MGR1, validateStatus: () => true },
+      );
+      expect(status).toBe(400);
+      expect(data.error.message).toMatch(/already assigned/i);
+    });
+
+    test("Rejects assigning an inactive employee", async () => {
+      // Deactivate an employee using Admin
+      await PATCH(
+        `/api/admin/Employees/${EMP2.username}`,
+        { isActive: false },
+        { auth: ADMIN },
+      );
+
+      const { status, data } = await POST(
+        `${BASE}/ProjectAssignments`,
+        {
+          employee_ID: EMP2.username,
+          project_ID: PROJECT_CP,
+          customRate: 100,
+          isActive: true,
+        },
+        { auth: MGR1, validateStatus: () => true },
+      );
+      expect(status).toBe(400);
+      expect(data.error.message).toMatch(/inactive/i);
+
+      // Restore
+      await PATCH(
+        `/api/admin/Employees/${EMP2.username}`,
+        { isActive: true },
+        { auth: ADMIN },
+      );
+    });
+
     test("Time entries expose computed fields: EmployeeName and Cost", async () => {
       const { data } = await GET(
         `${BASE}/TimeEntries?$select=ID,hours,rateSnapshot,employeeName,cost`,
