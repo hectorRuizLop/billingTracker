@@ -1,6 +1,7 @@
 "use strict";
 
 const cds = require("@sap/cds");
+const { logSecurityEvent } = require("../../shared/audit-logs");
 
 /**
  * Reactiva un cliente que había sido marcado como eliminado.
@@ -23,14 +24,10 @@ async function reactivateClient(req) {
     .set({ isDeleted: false, deletedAt: null, deletedBy: null })
     .where({ ID: clientId });
 
-  const audit = await cds.connect.to("audit-log");
-  await audit.log("SecurityEvent", {
-    user: req.user.id,
-    data: {
-      subject: "Client reactivated",
-      object: { type: "my.billing.Clients", id: { ID: clientId } },
-      attributes: [{ name: "isDeleted", old: true, new: false }],
-    },
+  await logSecurityEvent(req, {
+    subject: "Client reactivated",
+    object: { type: "my.billing.Clients", id: { ID: clientId } },
+    attributes: [{ name: "isDeleted", old: true, new: false }],
   });
 
   return `Client ${clientId} reactivated successfully`;

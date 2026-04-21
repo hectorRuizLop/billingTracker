@@ -2,6 +2,7 @@
 
 const cds = require("@sap/cds");
 const handlers = require("./handlers");
+const { logSecurityEvent } = require("./handlers/shared/audit-logs");
 
 module.exports = class AdminService extends cds.ApplicationService {
   async init() {
@@ -9,6 +10,16 @@ module.exports = class AdminService extends cds.ApplicationService {
       "CREATE",
       "Clients",
       handlers.admin.entities.clients.beforeCreate,
+    );
+    this.before(
+      "CREATE",
+      "TimeEntries",
+      handlers.admin.entities.timeEntries.beforeCreate,
+    );
+    this.before(
+      "UPDATE",
+      "TimeEntries",
+      handlers.admin.entities.timeEntries.beforeUpdate,
     );
 
     // Exclude soft-deleted clients from all reads
@@ -33,14 +44,10 @@ module.exports = class AdminService extends cds.ApplicationService {
         .set({ isDeleted: true, deletedAt: new Date(), deletedBy: req.user.id })
         .where({ ID });
 
-      const audit = await cds.connect.to("audit-log");
-      await audit.log("SecurityEvent", {
-        user: req.user.id,
-        data: {
-          subject: "Client soft-deleted",
-          object: { type: "my.billing.Clients", id: { ID } },
-          attributes: [{ name: "isDeleted", old: false, new: true }],
-        },
+      await logSecurityEvent(req, {
+        subject: "Client soft-deleted",
+        object: { type: "my.billing.Clients", id: { ID } },
+        attributes: [{ name: "isDeleted", old: false, new: true }],
       });
 
       return req.reply();

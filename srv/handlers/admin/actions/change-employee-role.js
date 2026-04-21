@@ -1,6 +1,7 @@
 "use strict";
 
 const cds = require("@sap/cds");
+const { logSecurityEvent } = require("../../shared/audit-logs");
 
 /**
  * Cambia el rol de un empleado al valor indicado.
@@ -33,14 +34,10 @@ async function changeEmployeeRole(req) {
   await UPDATE(Employees).set(update).where({ ID: employeeId });
 
   // Manual audit — custom action bypasses @PersonalData auto-logging
-  const audit = await cds.connect.to("audit-log");
-  await audit.log("SecurityEvent", {
-    user: req.user.id,
-    data: {
-      subject: "Employee role changed",
-      object: { type: "my.billing.Employees", id: { ID: employeeId } },
-      attributes: [{ name: "role", old: employee.role, new: newRole }],
-    },
+  await logSecurityEvent(req, {
+    subject: "Employee role changed",
+    object: { type: "my.billing.Employees", id: { ID: employeeId } },
+    attributes: [{ name: "role", old: employee.role, new: newRole }],
   });
 
   return `Employee role updated to ${newRole}`;
