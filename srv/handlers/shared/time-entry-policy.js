@@ -75,8 +75,50 @@ function rejectIfStatusIsNotDraft(req, status, message) {
   return false;
 }
 
+function validateHoursIncrement(hours) {
+  if (hours !== undefined && hours !== null) {
+    if ((Number(hours) * 100) % 25 !== 0) {
+      return "Hours must be entered in quarter-hour increments (multiples of 0.25)";
+    }
+  }
+  return null;
+}
+
+async function validateDailyLimit(
+  employeeId,
+  date,
+  hoursToAdd,
+  currentEntryId = null,
+) {
+  if (!employeeId || !date || hoursToAdd === undefined || hoursToAdd === null)
+    return null;
+
+  const { TimeEntries } = cds.entities("my.billing");
+
+  const query = SELECT.one
+    .columns("sum(hours) as total")
+    .from(TimeEntries)
+    .where({
+      employee_ID: employeeId,
+      date: date,
+    });
+
+  if (currentEntryId) {
+    query.and({ ID: { "!=": currentEntryId } });
+  }
+
+  const result = await query;
+  const currentTotal = result?.total || 0;
+
+  if (Number(currentTotal) + Number(hoursToAdd) > 8) {
+    return "Cannot log more than 8 hours on the same day";
+  }
+
+  return null;
+}
+
 async function validateCreate(req) {
-  const { date, project_ID } = req.data;
+  const { date, project_ID, hours, employee_ID } = req.data;
 
   if (
     rejectIfStatusIsNotDraft(
@@ -88,10 +130,18 @@ async function validateCreate(req) {
     return;
   }
 
+  const hoursError = validateHoursIncrement(hours);
+  if (hoursError) return req.error(400, hoursError);
+
   if (date) {
     const dateError = validateDate(date);
     if (dateError) return req.error(400, dateError);
     applyMonthAndYear(req.data, date);
+  }
+
+  if (date && employee_ID && hours !== undefined) {
+    const dailyLimitError = await validateDailyLimit(employee_ID, date, hours);
+    if (dailyLimitError) return req.error(400, dailyLimitError);
   }
 
   if (project_ID) {
@@ -104,7 +154,10 @@ async function validateCreate(req) {
 
 async function validateUpdate(req, entityName) {
   const { [entityName]: TimeEntries } = cds.entities("my.billing");
-  const id = req.params?.[0]?.ID ?? req.data.ID;
+  // Check if req.params is an array or object to get the ID properly depending on how CAP is calling it
+  const id =
+    (Array.isArray(req.params) ? req.params[0]?.ID : req.params?.ID) ??
+    req.data.ID;
   const current = await SELECT.one.from(TimeEntries).where({ ID: id });
 
   if (!current) return req.error(404, "Time entry not found");
@@ -126,11 +179,30 @@ async function validateUpdate(req, entityName) {
     return;
   }
 
+  const newHours =
+    req.data.hours !== undefined ? req.data.hours : current.hours;
+  const hoursError = validateHoursIncrement(newHours);
+  if (hoursError) return req.error(400, hoursError);
+
+  const newDate = req.data.date !== undefined ? req.data.date : current.date;
+  const newEmployeeId =
+    req.data.employee_ID !== undefined
+      ? req.data.employee_ID
+      : current.employee_ID;
+
   if (req.data.date) {
-    const dateError = validateDate(req.data.date);
+    const dateError = validateDate(newDate);
     if (dateError) return req.error(400, dateError);
-    applyMonthAndYear(req.data, req.data.date);
+    applyMonthAndYear(req.data, newDate);
   }
+
+  const dailyLimitError = await validateDailyLimit(
+    newEmployeeId,
+    newDate,
+    newHours,
+    id,
+  );
+  if (dailyLimitError) return req.error(400, dailyLimitError);
 
   if (req.data.project_ID) {
     const projectError = await ensureProjectIsOpen(req.data.project_ID);

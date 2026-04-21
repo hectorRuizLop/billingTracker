@@ -162,7 +162,7 @@ describe("Billing Tracker - Integration Tests", () => {
         `${BASE}/TimeEntries`,
         {
           date: VALID_WORKDAY,
-          hours: 4,
+          hours: 1,
           description: "Admin closed project check",
           employee_ID: EMP1_ID,
           project_ID: PROJECT_CP,
@@ -184,7 +184,7 @@ describe("Billing Tracker - Integration Tests", () => {
         `${BASE}/TimeEntries`,
         {
           date: VALID_WORKDAY,
-          hours: 2,
+          hours: 1,
           description: "Admin draft policy",
           employee_ID: EMP1_ID,
           project_ID: PROJECT_CP,
@@ -241,7 +241,7 @@ describe("Billing Tracker - Integration Tests", () => {
         `${BASE}/MyTimeEntries`,
         {
           date: VALID_WORKDAY,
-          hours: 6,
+          hours: 1,
           description: "Unit test entry",
           employee_ID: EMP1_ID,
           project_ID: PROJECT_CP,
@@ -257,7 +257,7 @@ describe("Billing Tracker - Integration Tests", () => {
         `${BASE}/MyTimeEntries`,
         {
           date: SECOND_VALID_WORKDAY,
-          hours: 2,
+          hours: 1,
           description: "Private",
           employee_ID: EMP1_ID,
           project_ID: PROJECT_CP,
@@ -280,7 +280,7 @@ describe("Billing Tracker - Integration Tests", () => {
         `${BASE}/MyTimeEntries`,
         {
           date: WEEKEND_DATE,
-          hours: 4,
+          hours: 1,
           description: "Saturday entry",
           employee_ID: EMP1_ID,
           project_ID: PROJECT_CP,
@@ -296,7 +296,7 @@ describe("Billing Tracker - Integration Tests", () => {
         `${BASE}/MyTimeEntries`,
         {
           date: FUTURE_DATE,
-          hours: 4,
+          hours: 1,
           description: "Future entry",
           employee_ID: EMP1_ID,
           project_ID: PROJECT_CP,
@@ -307,12 +307,58 @@ describe("Billing Tracker - Integration Tests", () => {
       expect(data.error.message).toMatch(/future/i);
     });
 
+    test("Rejects hours that are not in quarter-hour increments", async () => {
+      const { status, data } = await POST(
+        `${BASE}/MyTimeEntries`,
+        {
+          date: VALID_WORKDAY,
+          hours: 1.1,
+          description: "Bad increment",
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+        },
+        { auth: EMP1, validateStatus: () => true },
+      );
+      expect(status).toBe(400);
+      expect(data.error.message).toMatch(/quarter-hour/i);
+    });
+
+    test("Employee cannot log more than 8 hours on the same day", async () => {
+      // Add first entry of 5 hours
+      await POST(
+        `${BASE}/MyTimeEntries`,
+        {
+          date: SECOND_VALID_WORKDAY,
+          hours: 5,
+          description: "Morning entry",
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+        },
+        { auth: EMP1, validateStatus: () => true },
+      );
+
+      // Try adding another 4 hours which exceeds 8
+      const { status, data } = await POST(
+        `${BASE}/MyTimeEntries`,
+        {
+          date: SECOND_VALID_WORKDAY,
+          hours: 4,
+          description: "Afternoon entry",
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+        },
+        { auth: EMP1, validateStatus: () => true },
+      );
+      expect(status).toBe(400);
+      expect(data.error.message).toMatch(/more than 8 hours/i);
+    });
+
     test("Rejects time entry from a previous month", async () => {
       const { status, data } = await POST(
         `${BASE}/MyTimeEntries`,
         {
           date: PREVIOUS_MONTH_WORKDAY,
-          hours: 4,
+          hours: 1,
           description: "March entry",
           employee_ID: EMP1_ID,
           project_ID: PROJECT_CP,
@@ -334,7 +380,7 @@ describe("Billing Tracker - Integration Tests", () => {
         `${BASE}/MyTimeEntries`,
         {
           date: VALID_WORKDAY,
-          hours: 4,
+          hours: 1,
           description: "Closed project",
           employee_ID: EMP1_ID,
           project_ID: PROJECT_CP,
@@ -354,7 +400,7 @@ describe("Billing Tracker - Integration Tests", () => {
     test("Rejects update on a non-Draft time entry", async () => {
       const { status, data } = await PATCH(
         `${BASE}/MyTimeEntries/${TIME_ENTRY_SUBMITTED_EMP1}`,
-        { hours: 6 },
+        { hours: 1 },
         { auth: EMP1, validateStatus: () => true },
       );
       expect(status).toBe(400);
@@ -366,7 +412,7 @@ describe("Billing Tracker - Integration Tests", () => {
         `${BASE}/MyTimeEntries`,
         {
           date: VALID_WORKDAY,
-          hours: 3,
+          hours: 1,
           description: "Draft status guard",
           employee_ID: EMP1_ID,
           project_ID: PROJECT_CP,
@@ -388,7 +434,7 @@ describe("Billing Tracker - Integration Tests", () => {
         `${BASE}/MyTimeEntries`,
         {
           date: SECOND_VALID_WORKDAY,
-          hours: 3,
+          hours: 1,
           description: "Draft to update",
           employee_ID: EMP1_ID,
           project_ID: PROJECT_CP,
@@ -398,7 +444,7 @@ describe("Billing Tracker - Integration Tests", () => {
 
       const { status } = await PATCH(
         `${BASE}/MyTimeEntries/${created.ID}`,
-        { hours: 5, description: "Updated hours" },
+        { hours: 1, description: "Updated hours" },
         { auth: EMP1 },
       );
       expect(status).toBe(200);
@@ -532,7 +578,7 @@ describe("Billing Tracker - Integration Tests", () => {
         `${EMP_BASE}/MyTimeEntries`,
         {
           date: VALID_WORKDAY,
-          hours: 4,
+          hours: 1,
           description: "rateSnapshot category fallback",
           employee_ID: EMP1_ID,
           project_ID: PROJECT_CP,
@@ -582,7 +628,7 @@ describe("Billing Tracker - Integration Tests", () => {
         `${EMP_BASE}/MyTimeEntries`,
         {
           date: VALID_WORKDAY,
-          hours: 3,
+          hours: 1,
           description: "manager category fallback",
           employee_ID: MGR1.username,
           project_ID: PROJECT_CP,
@@ -629,7 +675,7 @@ describe("Billing Tracker - Integration Tests", () => {
         `${EMP_BASE}/MyTimeEntries`,
         {
           date: VALID_WORKDAY,
-          hours: 2,
+          hours: 1,
           description: "custom rate wins",
           employee_ID: EMP1_ID,
           project_ID: project.ID,
