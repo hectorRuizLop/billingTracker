@@ -1,5 +1,6 @@
 "use strict";
 process.env.NODE_ENV = "test";
+process.env.TIME_ENTRY_POLICY_TODAY = "2026-04-20";
 
 const cds = require("@sap/cds");
 const { GET, POST, PATCH, DELETE } = cds.test(__dirname + "/..");
@@ -31,6 +32,11 @@ const PROJECT_ERP = "40000000-0000-0000-0000-000000000002";
 const ASSIGNMENT_1 = "50000000-0000-0000-0000-000000000001";
 const CLIENT_1 = "30000000-0000-0000-0000-000000000001";
 const TIME_ENTRY_SUBMITTED_EMP1 = "60000000-0000-0000-0000-000000000001";
+const VALID_WORKDAY = "2026-04-10";
+const SECOND_VALID_WORKDAY = "2026-04-15";
+const WEEKEND_DATE = "2026-04-11";
+const FUTURE_DATE = "2026-04-21";
+const PREVIOUS_MONTH_WORKDAY = "2026-03-16";
 
 describe("Billing Tracker - Integration Tests", () => {
   describe("AdminService", () => {
@@ -144,6 +150,56 @@ describe("Billing Tracker - Integration Tests", () => {
       const { data: list } = await GET(`${BASE}/Clients`, { auth: ADMIN });
       expect(list.value.map((c) => c.ID)).toContain(clientId);
     });
+
+    test("Admin cannot create a time entry on a closed project", async () => {
+      await PATCH(
+        `/api/manager/Projects/${PROJECT_CP}`,
+        { status: "C" },
+        { auth: MGR1 },
+      );
+
+      const { status, data } = await POST(
+        `${BASE}/TimeEntries`,
+        {
+          date: VALID_WORKDAY,
+          hours: 4,
+          description: "Admin closed project check",
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+        },
+        { auth: ADMIN, validateStatus: () => true },
+      );
+      expect(status).toBe(400);
+      expect(data.error.message).toMatch(/open/i);
+
+      await PATCH(
+        `/api/manager/Projects/${PROJECT_CP}`,
+        { status: "O" },
+        { auth: MGR1 },
+      );
+    });
+
+    test("Admin cannot update a draft time entry to a non-draft status", async () => {
+      const { data: created } = await POST(
+        `${BASE}/TimeEntries`,
+        {
+          date: VALID_WORKDAY,
+          hours: 2,
+          description: "Admin draft policy",
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+        },
+        { auth: ADMIN },
+      );
+
+      const { status, data } = await PATCH(
+        `${BASE}/TimeEntries/${created.ID}`,
+        { status: "S" },
+        { auth: ADMIN, validateStatus: () => true },
+      );
+      expect(status).toBe(400);
+      expect(data.error.message).toMatch(/draft/i);
+    });
   });
 
   describe("EmployeeService", () => {
@@ -184,7 +240,7 @@ describe("Billing Tracker - Integration Tests", () => {
       const { data, status } = await POST(
         `${BASE}/MyTimeEntries`,
         {
-          date: "2026-04-10",
+          date: VALID_WORKDAY,
           hours: 6,
           description: "Unit test entry",
           employee_ID: EMP1_ID,
@@ -200,7 +256,7 @@ describe("Billing Tracker - Integration Tests", () => {
       const { data: created } = await POST(
         `${BASE}/MyTimeEntries`,
         {
-          date: "2026-04-15",
+          date: SECOND_VALID_WORKDAY,
           hours: 2,
           description: "Private",
           employee_ID: EMP1_ID,
@@ -223,7 +279,7 @@ describe("Billing Tracker - Integration Tests", () => {
       const { status, data } = await POST(
         `${BASE}/MyTimeEntries`,
         {
-          date: "2026-04-11",
+          date: WEEKEND_DATE,
           hours: 4,
           description: "Saturday entry",
           employee_ID: EMP1_ID,
@@ -239,7 +295,7 @@ describe("Billing Tracker - Integration Tests", () => {
       const { status, data } = await POST(
         `${BASE}/MyTimeEntries`,
         {
-          date: "2026-04-21",
+          date: FUTURE_DATE,
           hours: 4,
           description: "Future entry",
           employee_ID: EMP1_ID,
@@ -255,7 +311,7 @@ describe("Billing Tracker - Integration Tests", () => {
       const { status, data } = await POST(
         `${BASE}/MyTimeEntries`,
         {
-          date: "2026-03-16",
+          date: PREVIOUS_MONTH_WORKDAY,
           hours: 4,
           description: "March entry",
           employee_ID: EMP1_ID,
@@ -277,7 +333,7 @@ describe("Billing Tracker - Integration Tests", () => {
       const { status, data } = await POST(
         `${BASE}/MyTimeEntries`,
         {
-          date: "2026-04-16",
+          date: VALID_WORKDAY,
           hours: 4,
           description: "Closed project",
           employee_ID: EMP1_ID,
@@ -305,11 +361,33 @@ describe("Billing Tracker - Integration Tests", () => {
       expect(data.error.message).toMatch(/draft/i);
     });
 
+    test("Rejects updating a draft time entry to a non-Draft status", async () => {
+      const { data: created } = await POST(
+        `${BASE}/MyTimeEntries`,
+        {
+          date: VALID_WORKDAY,
+          hours: 3,
+          description: "Draft status guard",
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+        },
+        { auth: EMP1 },
+      );
+
+      const { status, data } = await PATCH(
+        `${BASE}/MyTimeEntries/${created.ID}`,
+        { status: "S" },
+        { auth: EMP1, validateStatus: () => true },
+      );
+      expect(status).toBe(400);
+      expect(data.error.message).toMatch(/draft/i);
+    });
+
     test("Allows updating a Draft time entry with a valid date", async () => {
       const { data: created } = await POST(
         `${BASE}/MyTimeEntries`,
         {
-          date: "2026-04-09",
+          date: SECOND_VALID_WORKDAY,
           hours: 3,
           description: "Draft to update",
           employee_ID: EMP1_ID,
@@ -406,7 +484,11 @@ describe("Billing Tracker - Integration Tests", () => {
       if (data.value.length > 0) {
         const entry = data.value[0];
         expect(typeof entry.employeeName).toBe("string");
-        if (entry.rateSnapshot !== null && entry.hours !== null && entry.cost !== null) {
+        if (
+          entry.rateSnapshot !== null &&
+          entry.hours !== null &&
+          entry.cost !== null
+        ) {
           expect(parseFloat(entry.cost)).toBeCloseTo(
             parseFloat(entry.hours) * parseFloat(entry.rateSnapshot),
             2,
@@ -424,14 +506,24 @@ describe("Billing Tracker - Integration Tests", () => {
       let expectedRate = 0;
       const { data: assignments } = await GET(
         `${MGR_BASE}/ProjectAssignments?$filter=employee_ID eq '${EMP1_ID}' and project_ID eq '${PROJECT_CP}'`,
-        { auth: MGR1 }
+        { auth: MGR1 },
       );
-      if (assignments && assignments.value && assignments.value.length > 0 && assignments.value[0].customRate !== null) {
+      if (
+        assignments &&
+        assignments.value &&
+        assignments.value.length > 0 &&
+        assignments.value[0].customRate !== null
+      ) {
         expectedRate = parseFloat(assignments.value[0].customRate);
       } else {
-        const { data: emp } = await GET(`/api/admin/Employees/${EMP1_ID}`, { auth: ADMIN });
+        const { data: emp } = await GET(`/api/admin/Employees/${EMP1_ID}`, {
+          auth: ADMIN,
+        });
         if (emp && emp.category_ID) {
-          const { data: cat } = await GET(`/api/admin/Categories/${emp.category_ID}`, { auth: ADMIN });
+          const { data: cat } = await GET(
+            `/api/admin/Categories/${emp.category_ID}`,
+            { auth: ADMIN },
+          );
           expectedRate = parseFloat(cat.rate);
         }
       }
@@ -439,7 +531,7 @@ describe("Billing Tracker - Integration Tests", () => {
       const { data: created, status } = await POST(
         `${EMP_BASE}/MyTimeEntries`,
         {
-          date: "2026-04-14",
+          date: VALID_WORKDAY,
           hours: 4,
           description: "rateSnapshot category fallback",
           employee_ID: EMP1_ID,
@@ -463,14 +555,25 @@ describe("Billing Tracker - Integration Tests", () => {
       let expectedRate = 0;
       const { data: assignments } = await GET(
         `${MGR_BASE}/ProjectAssignments?$filter=employee_ID eq '${MGR1.username}' and project_ID eq '${PROJECT_CP}'`,
-        { auth: MGR1 }
+        { auth: MGR1 },
       );
-      if (assignments && assignments.value && assignments.value.length > 0 && assignments.value[0].customRate !== null) {
+      if (
+        assignments &&
+        assignments.value &&
+        assignments.value.length > 0 &&
+        assignments.value[0].customRate !== null
+      ) {
         expectedRate = parseFloat(assignments.value[0].customRate);
       } else {
-        const { data: emp } = await GET(`/api/admin/Employees/${MGR1.username}`, { auth: ADMIN });
+        const { data: emp } = await GET(
+          `/api/admin/Employees/${MGR1.username}`,
+          { auth: ADMIN },
+        );
         if (emp && emp.category_ID) {
-          const { data: cat } = await GET(`/api/admin/Categories/${emp.category_ID}`, { auth: ADMIN });
+          const { data: cat } = await GET(
+            `/api/admin/Categories/${emp.category_ID}`,
+            { auth: ADMIN },
+          );
           expectedRate = parseFloat(cat.rate);
         }
       }
@@ -478,7 +581,7 @@ describe("Billing Tracker - Integration Tests", () => {
       const { data: created, status } = await POST(
         `${EMP_BASE}/MyTimeEntries`,
         {
-          date: "2026-04-14",
+          date: VALID_WORKDAY,
           hours: 3,
           description: "manager category fallback",
           employee_ID: MGR1.username,
@@ -525,7 +628,7 @@ describe("Billing Tracker - Integration Tests", () => {
       const { data: created, status } = await POST(
         `${EMP_BASE}/MyTimeEntries`,
         {
-          date: "2026-04-14",
+          date: VALID_WORKDAY,
           hours: 2,
           description: "custom rate wins",
           employee_ID: EMP1_ID,
