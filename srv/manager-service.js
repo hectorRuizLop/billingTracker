@@ -15,6 +15,16 @@ module.exports = class ManagerService extends cds.ApplicationService {
       "TimeEntries",
       handlers.manager.entities.timeEntries.beforeCreate,
     );
+    this.before(
+      "CREATE",
+      "ProjectAssignments",
+      handlers.manager.entities.projectAssignments.beforeCreate,
+    );
+    this.before(
+      "UPDATE",
+      "ProjectAssignments",
+      handlers.manager.entities.projectAssignments.beforeUpdate,
+    );
     return super.init();
   }
 };
