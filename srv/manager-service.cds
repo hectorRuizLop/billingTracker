@@ -20,7 +20,14 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
       )                      as employeeName : String,
       employee.category.name as categoryName,
       project.name           as projectName,
-      hours * rateSnapshot   as cost         : Decimal(15, 2)
+      case
+        status
+        when 'R'
+             then 0
+        else (
+               hours * rateSnapshot
+             )
+      end                    as cost         : Decimal(15, 2)
     };
 
   @restrict: [{
@@ -28,5 +35,8 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
     where: 'project.manager.externalId = $user'
   }]
   entity ProjectAssignments as projection on db.ProjectAssignments;
+
+  action approveTimeEntry(timeEntryId: UUID)                       returns String;
+  action rejectTimeEntry(timeEntryId: UUID, rejectionNote: String) returns String;
 
 }
