@@ -789,4 +789,135 @@ describe("Billing Tracker - Integration Tests", () => {
       );
     });
   });
+
+  describe("Time Entry Approval and Rejection", () => {
+    const EMP_BASE = "/api/employee";
+    const MGR_BASE = "/api/manager";
+    const NEW_DATE = "2026-04-13";
+
+    test("Manager can approve a submitted entry", async () => {
+      // 1. Create entry via employee
+      const { data: created } = await POST(
+        `${EMP_BASE}/MyTimeEntries`,
+        {
+          date: NEW_DATE,
+          hours: 2,
+          description: "approval test entry",
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+        },
+        { auth: EMP1 },
+      );
+
+      // 2. Put it in Submitted state manually via DB override
+      await cds.run(
+        UPDATE("my.billing.TimeEntries")
+          .set({ status: "S" })
+          .where({ ID: created.ID }),
+      );
+
+      // 3. Manager approves
+      const { status } = await POST(
+        `${MGR_BASE}/approveTimeEntry`,
+        { timeEntryId: created.ID },
+        { auth: MGR1 },
+      );
+      expect(status).toBe(200);
+
+      // 4. Verify status 'A'
+      const { data: fetchEntry } = await GET(
+        `${MGR_BASE}/TimeEntries/${created.ID}`,
+        { auth: MGR1 },
+      );
+      expect(fetchEntry.status).toBe("A");
+    });
+
+    test("Rejects approval on a non-submitted entry", async () => {
+      // Create 'D'raft entry
+      const { data: created } = await POST(
+        `${EMP_BASE}/MyTimeEntries`,
+        {
+          date: NEW_DATE,
+          hours: 1,
+          description: "draft test entry",
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+        },
+        { auth: EMP1 },
+      );
+
+      const { status, data } = await POST(
+        `${MGR_BASE}/approveTimeEntry`,
+        { timeEntryId: created.ID },
+        { auth: MGR1, validateStatus: () => true },
+      );
+      expect(status).toBe(400);
+      expect(data.error.message).toMatch(/Submitted/i);
+    });
+
+    test("Manager can reject a submitted entry with justification", async () => {
+      const { data: created } = await POST(
+        `${EMP_BASE}/MyTimeEntries`,
+        {
+          date: NEW_DATE,
+          hours: 3,
+          description: "rejection test entry",
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+        },
+        { auth: EMP1 },
+      );
+      await cds.run(
+        UPDATE("my.billing.TimeEntries")
+          .set({ status: "S" })
+          .where({ ID: created.ID }),
+      );
+
+      const { status } = await POST(
+        `${MGR_BASE}/rejectTimeEntry`,
+        {
+          timeEntryId: created.ID,
+          rejectionNote: "This work was not authorized",
+        },
+        { auth: MGR1 },
+      );
+      expect(status).toBe(200);
+
+      const { data: fetchEntry } = await GET(
+        `${MGR_BASE}/TimeEntries/${created.ID}`,
+        { auth: MGR1 },
+      );
+      expect(fetchEntry.status).toBe("R");
+      expect(fetchEntry.rejectionNote).toBe("This work was not authorized");
+      // ensure cost drops to 0
+      expect(parseFloat(fetchEntry.cost)).toBe(0);
+    });
+
+    test("Rejection fails if justification is too short", async () => {
+      const { data: created } = await POST(
+        `${EMP_BASE}/MyTimeEntries`,
+        {
+          date: NEW_DATE,
+          hours: 1,
+          description: "short rejection test",
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+        },
+        { auth: EMP1 },
+      );
+      await cds.run(
+        UPDATE("my.billing.TimeEntries")
+          .set({ status: "S" })
+          .where({ ID: created.ID }),
+      );
+
+      const { status, data } = await POST(
+        `${MGR_BASE}/rejectTimeEntry`,
+        { timeEntryId: created.ID, rejectionNote: "too short" },
+        { auth: MGR1, validateStatus: () => true },
+      );
+      expect(status).toBe(400);
+      expect(data.error.message).toMatch(/10 characters/i);
+    });
+  });
 });
