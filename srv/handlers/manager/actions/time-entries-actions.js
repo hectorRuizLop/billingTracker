@@ -38,8 +38,11 @@ async function rejectEntries(req, timeEntryIds, rejectionNote) {
     );
   }
 
+  const now = new Date().toISOString();
+  const reviewer = req.user?.id ?? "system";
+
   await UPDATE(TimeEntries)
-    .set({ status: "R", rejectionNote })
+    .set({ status: "R", rejectionNote, reviewedAt: now, reviewedBy: reviewer })
     .where({ ID: { in: uniqueIds } });
 
   return uniqueIds.length;
@@ -58,7 +61,12 @@ async function approveTimeEntry(req) {
     return req.error(400, "Only valid if the entry was in Submitted status.");
   }
 
-  await UPDATE(TimeEntries).set({ status: "A" }).where({ ID: timeEntryId });
+  const now = new Date().toISOString();
+  const reviewer = req.user?.id ?? "system";
+
+  await UPDATE(TimeEntries)
+    .set({ status: "A", billingStatus: "U", reviewedAt: now, reviewedBy: reviewer })
+    .where({ ID: timeEntryId });
 
   return `Time entry ${timeEntryId} approved successfully.`;
 }
