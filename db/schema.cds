@@ -5,38 +5,42 @@ using {
   managed
 } from '@sap/cds/common';
 
-type CategoryCode    : String(1) enum {
+type CategoryCode        : String(1) enum {
   Junior = 'J';
   MidLevel = 'M';
   Senior = 'S';
   Lead = 'L';
 }
 
-type BillingStatus : String(1) enum {
-  Unbilled  = 'U';
-  Billed    = 'B';
-  Invoiced  = 'I';
+type BillingStatus       : String(1) enum {
+  Unbilled = 'U';
+  Billed = 'B';
+  Invoiced = 'I';
 }
 
-type TimeEntryStatus : String(1) enum {
+type TimeEntryStatus     : String(1) enum {
   Draft = 'D';
   Submitted = 'S';
   Approved = 'A';
   Rejected = 'R';
 }
 
-type ProjectStatus   : String(1) enum {
+type ProjectStatus       : String(1) enum {
   Open = 'O';
   Closed = 'C';
 }
 
-type UserRole        : String(1) enum {
+type UserRole            : String(1) enum {
   Employee = 'E';
   Manager = 'M';
   Admin = 'A';
 }
 
-@AuditLog.Operation: { Insert, Update, Delete }
+@AuditLog.Operation: {
+  Insert,
+  Update,
+  Delete
+}
 entity Categories : cuid, managed {
   code        : CategoryCode   @mandatory;
   name        : String(50)     @mandatory;
@@ -150,15 +154,15 @@ entity TimeEntries : cuid, managed {
 }
 
 type BillingPeriodStatus : String(1) enum {
-  Open     = 'O';
-  Closed   = 'C';
+  Open = 'O';
+  Closed = 'C';
   Invoiced = 'I';
 }
 
 entity BillingPeriods : cuid, managed {
-  project    : Association to Projects  @mandatory;
-  month      : Integer                  @mandatory;
-  year       : Integer                  @mandatory;
+  project    : Association to Projects @mandatory;
+  month      : Integer                 @mandatory;
+  year       : Integer                 @mandatory;
   status     : BillingPeriodStatus default 'O';
   closedAt   : Timestamp;
   closedBy   : String;
@@ -166,16 +170,16 @@ entity BillingPeriods : cuid, managed {
   totalHours : Decimal(10, 2);
 }
 
-type InvoiceStatus : String(1) enum {
-  Draft     = 'D';
-  Sent      = 'S';
-  Paid      = 'P';
+type InvoiceStatus       : String(1) enum {
+  Draft = 'D';
+  Sent = 'S';
+  Paid = 'P';
   Cancelled = 'C';
 }
 
 entity Invoices : cuid, managed {
-  invoiceNumber : String(50)              @mandatory;
-  issueDate     : Date                    @mandatory;
+  invoiceNumber : String(50)             @mandatory;
+  issueDate     : Date                   @mandatory;
   dueDate       : Date;
   status        : InvoiceStatus default 'D';
   currency      : String(3) default 'EUR';
@@ -184,18 +188,17 @@ entity Invoices : cuid, managed {
   taxAmount     : Decimal(15, 2);
   total         : Decimal(15, 2);
   notes         : String(500);
-  client        : Association to Clients        @mandatory;
+  client        : Association to Clients @mandatory;
   billingPeriod : Association to BillingPeriods;
   lines         : Composition of many InvoiceLines
                     on lines.invoice = $self;
 }
 
 entity InvoiceLines : cuid {
-  invoice      : Association to Invoices     @mandatory;
-  timeEntry    : Association to TimeEntries  @mandatory;
+  invoice      : Association to Invoices    @mandatory;
+  timeEntry    : Association to TimeEntries @mandatory;
   description  : String(500);
   hours        : Decimal(4, 2);
   rateSnapshot : Decimal(10, 2);
   amount       : Decimal(15, 2);
 }
-

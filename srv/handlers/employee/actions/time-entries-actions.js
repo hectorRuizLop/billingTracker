@@ -41,14 +41,12 @@ async function submitMonth(req) {
     );
   }
 
-  await UPDATE(TimeEntries)
-    .set({ status: "S" })
-    .where({
-      employee_ID: employee.ID,
-      year,
-      month,
-      status: "D",
-    });
+  await UPDATE(TimeEntries).set({ status: "S" }).where({
+    employee_ID: employee.ID,
+    year,
+    month,
+    status: "D",
+  });
 
   return `Submitted ${drafts.length} time entr${drafts.length === 1 ? "y" : "ies"} for ${year}-${String(month).padStart(2, "0")}.`;
 }

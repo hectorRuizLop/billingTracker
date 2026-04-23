@@ -24,7 +24,9 @@ async function rejectEntries(req, timeEntryIds, rejectionNote) {
   const uniqueIds = [...new Set(timeEntryIds)];
   const { TimeEntries } = cds.entities("my.billing");
 
-  const entries = await SELECT.from(TimeEntries).where({ ID: { in: uniqueIds } });
+  const entries = await SELECT.from(TimeEntries).where({
+    ID: { in: uniqueIds },
+  });
 
   if (entries.length !== uniqueIds.length) {
     return req.error(404, "One or more time entries were not found.");
@@ -32,10 +34,7 @@ async function rejectEntries(req, timeEntryIds, rejectionNote) {
 
   const notSubmitted = entries.filter((e) => e.status !== "S");
   if (notSubmitted.length > 0) {
-    return req.error(
-      400,
-      "Only valid if the entries are in Submitted status.",
-    );
+    return req.error(400, "Only valid if the entries are in Submitted status.");
   }
 
   const now = new Date().toISOString();
@@ -65,7 +64,12 @@ async function approveTimeEntry(req) {
   const reviewer = req.user?.id ?? "system";
 
   await UPDATE(TimeEntries)
-    .set({ status: "A", billingStatus: "U", reviewedAt: now, reviewedBy: reviewer })
+    .set({
+      status: "A",
+      billingStatus: "U",
+      reviewedAt: now,
+      reviewedBy: reviewer,
+    })
     .where({ ID: timeEntryId });
 
   return `Time entry ${timeEntryId} approved successfully.`;
