@@ -58,6 +58,24 @@ async function ensureProjectIsOpen(projectId) {
   return null;
 }
 
+async function ensureMonthIsOpen(employeeId, month, year) {
+  if (!employeeId || !month || !year) return null;
+
+  const { TimeEntries } = cds.entities("my.billing");
+  const lockedEntry = await SELECT.one.from(TimeEntries).where({
+    employee_ID: employeeId,
+    month,
+    year,
+    status: { in: ["S", "A"] },
+  });
+
+  if (lockedEntry) {
+    return "Cannot create time entries for a month that already has submitted or approved records";
+  }
+
+  return null;
+}
+
 async function ensureRateSnapshot(data, current = {}) {
   const employeeId = data.employee_ID ?? current.employee_ID;
   const projectId = data.project_ID ?? current.project_ID;
@@ -139,6 +157,13 @@ async function validateCreate(req) {
     applyMonthAndYear(req.data, date);
   }
 
+  const monthLockError = await ensureMonthIsOpen(
+    employee_ID,
+    req.data.month,
+    req.data.year,
+  );
+  if (monthLockError) return req.error(400, monthLockError);
+
   if (date && employee_ID && hours !== undefined) {
     const dailyLimitError = await validateDailyLimit(employee_ID, date, hours);
     if (dailyLimitError) return req.error(400, dailyLimitError);
@@ -213,6 +238,7 @@ async function validateUpdate(req, entityName) {
 }
 
 module.exports = {
+  ensureMonthIsOpen,
   validateCreate,
   validateUpdate,
 };

@@ -105,4 +105,6 @@ service EmployeeService @(path: '/api/employee')@(requires: [
           year,
           @readonly rateSnapshot
     };
+
+  action submitMonth(year: Integer, month: Integer) returns String;
 }
