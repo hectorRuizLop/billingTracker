@@ -1,0 +1,246 @@
+@baseUrl = http://localhost:4004/api/employee
+
+@employeeUser1 = 20000000-0000-0000-0000-000000000001
+@employeeId = 20000000-0000-0000-0000-000000000001
+@projectCustomerPortal = 40000000-0000-0000-0000-000000000001
+@projectErp = 40000000-0000-0000-0000-000000000002
+@seedSubmittedEntry = 60000000-0000-0000-0000-000000000001
+@seedRejectedEntry = 60000000-0000-0000-0000-000000000003
+@pass = pass
+
+# READ
+
+
+### Get my time entries
+GET {{baseUrl}}/MyTimeEntries
+Authorization: Basic {{employeeUser1}} {{pass}}
+
+###
+
+### Get my projects
+GET {{baseUrl}}/MyProjects
+Authorization: Basic {{employeeUser1}} {{pass}}
+
+###
+
+# Month is already locked for this employee
+
+### Read the existing submitted entry that already locks April
+GET {{baseUrl}}/MyTimeEntries/{{seedSubmittedEntry}}
+Authorization: Basic {{employeeUser1}} {{pass}}
+
+###
+
+### Try creating a new entry in April 2026 
+### Should fail because month already has submitted/approved records
+POST {{baseUrl}}/MyTimeEntries
+Authorization: Basic {{employeeUser1}} {{pass}}
+Content-Type: application/json
+
+{
+  "date": "2026-04-14",
+  "hours": 1,
+  "description": "Should fail because April is already locked in seed data",
+  "employee_ID": "{{employeeId}}",
+  "project_ID": "{{projectCustomerPortal}}"
+}
+
+###
+
+### Try submitting April again (should fail because there are no draft entries to send)
+POST {{baseUrl}}/submitMonth
+Authorization: Basic {{employeeUser1}} {{pass}}
+Content-Type: application/json
+
+{
+  "year": 2026,
+  "month": 4
+}
+
+###
+
+# Rejected entry exists, but Employee still cannot create a correction in April
+# because the month is already locked by other submitted entries in seed data
+
+### Read the existing rejected entry from seed data
+GET {{baseUrl}}/MyTimeEntries/{{seedRejectedEntry}}
+Authorization: Basic {{employeeUser1}} {{pass}}
+
+###
+
+### Try creating a corrective draft 
+### Employee already has Submitted entries in April
+POST {{baseUrl}}/MyTimeEntries
+Authorization: Basic {{employeeUser1}} {{pass}}
+Content-Type: application/json
+
+{
+  "date": "2026-04-15",
+  "hours": 1,
+  "description": "Corrected draft after rejection",
+  "employee_ID": "{{employeeId}}",
+  "project_ID": "{{projectErp}}"
+}
+
+###
+
+
+# VALIDATIONS  ALL SHOULD FAIL
+
+
+### Weekend date
+POST {{baseUrl}}/MyTimeEntries
+Authorization: Basic {{employeeUser1}} {{pass}}
+Content-Type: application/json
+
+{
+  "date": "2026-04-05",
+  "hours": 4,
+  "description": "Should fail - weekend",
+  "employee_ID": "{{employeeId}}",
+  "project_ID": "{{projectCustomerPortal}}"
+}
+
+###
+
+###  Future date 
+POST {{baseUrl}}/MyTimeEntries
+Authorization: Basic {{employeeUser1}} {{pass}}
+Content-Type: application/json
+
+{
+  "date": "2029-04-24",
+  "hours": 4,
+  "description": "Should fail - future date",
+  "employee_ID": "{{employeeId}}",
+  "project_ID": "{{projectCustomerPortal}}"
+}
+
+###
+### Previous month
+POST {{baseUrl}}/MyTimeEntries
+Authorization: Basic {{employeeUser1}} {{pass}}
+Content-Type: application/json
+
+{
+  "date": "2026-03-15",
+  "hours": 4,
+  "description": "Should fail - not current month",
+  "employee_ID": "{{employeeId}}",
+  "project_ID": "{{projectCustomerPortal}}"
+}
+
+###
+
+### Hours not in quarter-hour increments (1.33)
+POST {{baseUrl}}/MyTimeEntries
+Authorization: Basic {{employeeUser1}} {{pass}}
+Content-Type: application/json
+
+{
+  "date": "2026-04-14",
+  "hours": 1.33,
+  "description": "Should fail - invalid increment",
+  "employee_ID": "{{employeeId}}",
+  "project_ID": "{{projectCustomerPortal}}"
+}
+
+###
+
+### C5. More than 8 hours in a day (Héctor already has 8h on 2026-04-01)
+POST {{baseUrl}}/MyTimeEntries
+Authorization: Basic {{employeeUser1}} {{pass}}
+Content-Type: application/json
+
+{
+  "date": "2026-04-01",
+  "hours": 1,
+  "description": "Should fail - exceeds daily limit",
+  "employee_ID": "{{employeeId}}",
+  "project_ID": "{{projectCustomerPortal}}"
+}
+
+###
+
+### C6. Creating with status != Draft (e.g., Submitted)
+POST {{baseUrl}}/MyTimeEntries
+Authorization: Basic {{employeeUser1}} {{pass}}
+Content-Type: application/json
+
+{
+  "date": "2026-04-14",
+  "hours": 2,
+  "description": "Should fail - status not allowed",
+  "status": "S",
+  "employee_ID": "{{employeeId}}",
+  "project_ID": "{{projectCustomerPortal}}"
+}
+
+###
+
+# UPDATE VALIDATIONS
+
+### Try updating a Submitted entry 
+### Should fail becaise not Draft)
+PATCH {{baseUrl}}/MyTimeEntries/{{seedSubmittedEntry}}
+Authorization: Basic {{employeeUser1}} {{pass}}
+Content-Type: application/json
+
+{
+  "hours": 3
+}
+
+###
+
+### D2. Try updating a Rejected entry (should fail - not Draft)
+PATCH {{baseUrl}}/MyTimeEntries/{{seedRejectedEntry}}
+Authorization: Basic {{employeeUser1}} {{pass}}
+Content-Type: application/json
+
+{
+  "hours": 3
+}
+
+###
+
+# SCENARIO E: OTHER EMPLOYEES
+
+# Has:
+# 6h, Approved (A) on Customer Portal
+# 60000000...004: 2026-04-04, 5h, Draft (D) on Sales Mobile App
+
+@employeeUser2 = 20000000-0000-0000-0000-000000000002
+
+###
+GET {{baseUrl}}/MyTimeEntries
+Authorization: Basic {{employeeUser2}} {{pass}}
+
+###
+
+### Should fail has Approved entry)
+POST {{baseUrl}}/MyTimeEntries
+Authorization: Basic {{employeeUser2}} {{pass}}
+Content-Type: application/json
+
+{
+  "date": "2026-04-10",
+  "hours": 2,
+  "description": "Should fail - April locked by approved entry",
+  "employee_ID": "{{employeeUser2}}",
+  "project_ID": "40000000-0000-0000-0000-000000000003"
+}
+
+###
+### Expected: 200 - "Submitted 1 time entry for 2026-04"
+POST {{baseUrl}}/submitMonth
+Authorization: Basic {{employeeUser2}} {{pass}}
+Content-Type: application/json
+
+{
+  "year": 2026,
+  "month": 4
+}
+
+
+
+

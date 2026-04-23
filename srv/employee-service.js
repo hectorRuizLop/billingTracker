@@ -15,6 +15,10 @@ module.exports = class EmployeeService extends cds.ApplicationService {
       "MyTimeEntries",
       handlers.employee.entities.timeEntries.beforeUpdate,
     );
+    this.on(
+      "submitMonth",
+      handlers.employee.actions.timeEntries.submitMonth,
+    );
     return super.init();
   }
 };
