@@ -44,8 +44,11 @@ type UserRole            : String(1) enum {
 entity Categories : cuid, managed {
   code        : CategoryCode   @mandatory;
   name        : String(50)     @mandatory;
-  rate        : Decimal(10, 2) @mandatory;
+  rate        : Decimal(14, 4) @mandatory;
   description : String(200);
+  //Slowly changing dimensions
+  validFrom   : Date default '1900-01-01';
+  validTo     : Date default '9999-12-31';
 }
 
 @PersonalData.EntitySemantics: 'DataSubject'
@@ -130,7 +133,9 @@ entity ProjectAssignments : cuid, managed {
   isActive   : Boolean default true;
   removedAt  : Timestamp;
   removedBy  : String;
-  customRate : Decimal(10, 2); // Allows a manager to assign a worker with a different rate
+  customRate : Decimal(14, 4); // Allows a manager to assign a worker with a different rate
+  validFrom  : Date default '1900-01-01';
+  validTo    : Date default '9999-12-31';
 }
 
 entity TimeEntries : cuid, managed {
@@ -143,7 +148,7 @@ entity TimeEntries : cuid, managed {
   reviewedBy    : String;
   rejectionNote : String(500);
 
-  rateSnapshot  : Decimal(10, 2);
+  rateSnapshot  : Decimal(14, 4);
   billingStatus : BillingStatus default 'U';
 
   employee      : Association to Employees @mandatory;
@@ -184,9 +189,9 @@ entity Invoices : cuid, managed {
   status        : InvoiceStatus default 'D';
   currency      : String(3) default 'EUR';
   taxRate       : Decimal(5, 2);
-  subtotal      : Decimal(15, 2);
-  taxAmount     : Decimal(15, 2);
-  total         : Decimal(15, 2);
+  subtotal      : Decimal(19, 4);
+  taxAmount     : Decimal(19, 4);
+  total         : Decimal(19, 4);
   notes         : String(500);
   client        : Association to Clients @mandatory;
   billingPeriod : Association to BillingPeriods;
@@ -199,6 +204,6 @@ entity InvoiceLines : cuid {
   timeEntry    : Association to TimeEntries @mandatory;
   description  : String(500);
   hours        : Decimal(4, 2);
-  rateSnapshot : Decimal(10, 2);
-  amount       : Decimal(15, 2);
+  rateSnapshot : Decimal(14, 4);
+  amount       : Decimal(19, 4);
 }
