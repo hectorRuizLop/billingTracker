@@ -6,7 +6,14 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
     grant: '*',
     where: 'manager.externalId = $user'
   }]
-  entity Projects           as projection on db.Projects;
+  entity Projects           as
+    projection on db.Projects {
+      *,
+      virtual totalHours      : Decimal(15, 2),
+      virtual totalCost       : Decimal(15, 2),
+      virtual budgetRemaining : Decimal(15, 2),
+      virtual avgCostPerHour  : Decimal(15, 2)
+    };
 
   @restrict: [{
     grant: 'READ',
@@ -20,6 +27,7 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
       )                      as employeeName : String,
       employee.category.name as categoryName,
       project.name           as projectName,
+      @readonly rateSnapshot,
       case
         status
         when 'R'

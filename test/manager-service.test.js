@@ -181,6 +181,44 @@ describe("ManagerService", () => {
     );
   });
 
+  test("Projects expose computed financial fields on collection read", async () => {
+    const { data, status } = await GET(`${BASE}/Projects`, { auth: MGR1 });
+    expect(status).toBe(200);
+
+    const cp = data.value.find((p) => p.ID === PROJECT_CP);
+    expect(cp).toBeDefined();
+    expect(parseFloat(cp.totalHours)).toBe(6);
+    expect(parseFloat(cp.totalCost)).toBeCloseTo(270, 2);
+    expect(parseFloat(cp.budgetRemaining)).toBeCloseTo(
+      parseFloat(cp.budget) - 270,
+      2,
+    );
+    expect(parseFloat(cp.avgCostPerHour)).toBeCloseTo(45, 2);
+
+    const mobile = data.value.find(
+      (p) => p.ID === "40000000-0000-0000-0000-000000000003",
+    );
+    expect(mobile).toBeDefined();
+    expect(parseFloat(mobile.totalHours)).toBe(0);
+    expect(parseFloat(mobile.totalCost)).toBe(0);
+    expect(parseFloat(mobile.budgetRemaining)).toBeCloseTo(95000, 2);
+    expect(parseFloat(mobile.avgCostPerHour)).toBe(0);
+  });
+
+  test("Projects expose computed financial fields on single read", async () => {
+    const { data, status } = await GET(`${BASE}/Projects/${PROJECT_CP}`, {
+      auth: MGR1,
+    });
+    expect(status).toBe(200);
+    expect(parseFloat(data.totalHours)).toBe(6);
+    expect(parseFloat(data.totalCost)).toBeCloseTo(270, 2);
+    expect(parseFloat(data.budgetRemaining)).toBeCloseTo(
+      parseFloat(data.budget) - 270,
+      2,
+    );
+    expect(parseFloat(data.avgCostPerHour)).toBeCloseTo(45, 2);
+  });
+
   test("Time entries expose computed fields: EmployeeName and Cost", async () => {
     const { data } = await GET(
       `${BASE}/TimeEntries?$select=ID,hours,rateSnapshot,employeeName,cost`,

@@ -79,9 +79,16 @@ async function ensureMonthIsOpen(employeeId, month, year) {
 async function ensureRateSnapshot(data, current = {}) {
   const employeeId = data.employee_ID ?? current.employee_ID;
   const projectId = data.project_ID ?? current.project_ID;
-  if (!employeeId || !projectId || data.rateSnapshot) return;
+  const entryDate = data.date ?? current.date;
+  if (!employeeId || !projectId) return null;
 
-  data.rateSnapshot = await resolveRateSnapshot(employeeId, projectId);
+  // Always recalculate,  never trust a client- upplied rate.
+  const rate = await resolveRateSnapshot(employeeId, projectId, entryDate);
+  if (rate === null || rate === undefined) {
+    return "Unable to resolve a billing rate for the given employee, project and date";
+  }
+  data.rateSnapshot = rate;
+  return null;
 }
 
 function rejectIfStatusIsNotDraft(req, status, message) {
@@ -136,6 +143,8 @@ async function validateDailyLimit(
 }
 
 async function validateCreate(req) {
+  // Reject any client-injected rate snapshot to prevent rate manipulation.
+  delete req.data.rateSnapshot;
   const { date, project_ID, hours, employee_ID } = req.data;
 
   if (
@@ -174,10 +183,13 @@ async function validateCreate(req) {
     if (projectError) return req.error(400, projectError);
   }
 
-  await ensureRateSnapshot(req.data);
+  const rateError = await ensureRateSnapshot(req.data);
+  if (rateError) return req.error(400, rateError);
 }
 
 async function validateUpdate(req, entityName) {
+  // Reject any client-injected rate snapshot to prevent rate manipulation.
+  delete req.data.rateSnapshot;
   const { [entityName]: TimeEntries } = cds.entities("my.billing");
   // Check if req.params is an array or object to get the ID properly depending on how CAP is calling it
   const id =
@@ -234,7 +246,8 @@ async function validateUpdate(req, entityName) {
     if (projectError) return req.error(400, projectError);
   }
 
-  await ensureRateSnapshot(req.data, current);
+  const rateError = await ensureRateSnapshot(req.data, current);
+  if (rateError) return req.error(400, rateError);
 }
 
 module.exports = {
