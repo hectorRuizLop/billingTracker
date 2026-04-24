@@ -32,4 +32,44 @@ async function beforeCreate(req) {
   }
 }
 
-module.exports = { beforeCreate };
+async function afterRead(results, _req) {
+  if (!results) return;
+
+  const projects = Array.isArray(results) ? results : [results];
+  if (projects.length === 0) return;
+
+  const projectIds = projects.map((p) => p.ID).filter(Boolean);
+  if (projectIds.length === 0) return;
+
+  const aggResults = await SELECT.from("my.billing.TimeEntries as T")
+    .leftJoin("my.billing.ProjectAssignments as A")
+    .on("T.employee_ID = A.employee_ID and T.project_ID = A.project_ID")
+    .columns(
+      "T.project_ID",
+      "SUM(T.hours) as totalHours",
+      "SUM(T.hours * COALESCE(T.rateSnapshot, A.customRate)) as totalCost",
+    )
+    .where({ "T.project_ID": { in: projectIds }, "T.status": "A" })
+    .groupBy("T.project_ID");
+
+  const aggByProject = {};
+  for (const row of aggResults) {
+    aggByProject[row.project_ID] = {
+      totalHours: row.totalHours || 0,
+      totalCost: row.totalCost || 0,
+    };
+  }
+
+  for (const project of projects) {
+    const agg = aggByProject[project.ID] || { totalHours: 0, totalCost: 0 };
+    const budget = project.budget || 0;
+
+    project.totalHours = agg.totalHours;
+    project.totalCost = agg.totalCost;
+    project.budgetRemaining = budget - agg.totalCost;
+    project.avgCostPerHour =
+      agg.totalHours > 0 ? agg.totalCost / agg.totalHours : 0;
+  }
+}
+
+module.exports = { beforeCreate, afterRead };

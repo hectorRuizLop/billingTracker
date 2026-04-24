@@ -33,6 +33,11 @@ module.exports = class ManagerService extends cds.ApplicationService {
       "rejectTimeEntry",
       handlers.manager.actions.timeEntries.rejectTimeEntry,
     );
+    this.after(
+      "READ",
+      "Projects",
+      handlers.manager.entities.projects.afterRead,
+    );
     return super.init();
   }
 };
