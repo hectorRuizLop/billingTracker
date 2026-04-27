@@ -13,6 +13,7 @@ const {
   MGR1_ID,
   PROJECT_CP,
   PROJECT_ERP,
+  PROJECT_MOBILE,
   TIME_ENTRY_SUBMITTED_EMP1,
   VALID_WORKDAY,
   SECOND_VALID_WORKDAY,
@@ -240,7 +241,7 @@ describe("TimeEntry Validations", () => {
 
   test("Rejects time entry on a closed project", async () => {
     await PATCH(
-      `/api/manager/Projects/${PROJECT_CP}`,
+      `/api/manager/Projects/${PROJECT_MOBILE}`,
       { status: "C" },
       { auth: MGR1 },
     );
@@ -252,7 +253,7 @@ describe("TimeEntry Validations", () => {
         hours: 1,
         description: "Closed project",
         employee_ID: MGR1_ID,
-        project_ID: PROJECT_CP,
+        project_ID: PROJECT_MOBILE,
       },
       { auth: MGR1, validateStatus: () => true },
     );
@@ -260,7 +261,7 @@ describe("TimeEntry Validations", () => {
     expect(data.error.message).toMatch(/open/i);
 
     await PATCH(
-      `/api/manager/Projects/${PROJECT_CP}`,
+      `/api/manager/Projects/${PROJECT_MOBILE}`,
       { status: "O" },
       { auth: MGR1 },
     );

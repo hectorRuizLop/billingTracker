@@ -18,7 +18,15 @@ async function beforeProjectAssignment(req) {
     }
   }
 
-  const { Employees, ProjectAssignments } = cds.entities("my.billing");
+  const { Employees, ProjectAssignments, Projects } =
+    cds.entities("my.billing");
+
+  if (req.event === "CREATE" && project_ID) {
+    const project = await SELECT.one.from(Projects).where({ ID: project_ID });
+    if (project?.status === "C") {
+      return req.error(400, "Cannot assign employees to a closed project.");
+    }
+  }
 
   if (employee_ID) {
     const employee = await SELECT.one
