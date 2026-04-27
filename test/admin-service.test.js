@@ -11,6 +11,7 @@ const {
   EMP1_ID,
   MGR1_ID,
   PROJECT_CP,
+  PROJECT_MOBILE,
   VALID_WORKDAY,
 } = require("./helpers");
 
@@ -128,7 +129,7 @@ describe("AdminService", () => {
 
   test("Admin cannot create a time entry on a closed project", async () => {
     await PATCH(
-      `/api/manager/Projects/${PROJECT_CP}`,
+      `/api/manager/Projects/${PROJECT_MOBILE}`,
       { status: "C" },
       { auth: MGR1 },
     );
@@ -140,7 +141,7 @@ describe("AdminService", () => {
         hours: 1,
         description: "Admin closed project check",
         employee_ID: MGR1_ID,
-        project_ID: PROJECT_CP,
+        project_ID: PROJECT_MOBILE,
       },
       { auth: ADMIN, validateStatus: () => true },
     );
@@ -148,7 +149,7 @@ describe("AdminService", () => {
     expect(data.error.message).toMatch(/open/i);
 
     await PATCH(
-      `/api/manager/Projects/${PROJECT_CP}`,
+      `/api/manager/Projects/${PROJECT_MOBILE}`,
       { status: "O" },
       { auth: MGR1 },
     );

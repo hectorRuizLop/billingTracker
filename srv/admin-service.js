@@ -21,6 +21,21 @@ module.exports = class AdminService extends cds.ApplicationService {
       "TimeEntries",
       handlers.admin.entities.timeEntries.beforeUpdate,
     );
+    this.before(
+      "UPDATE",
+      "Projects",
+      handlers.admin.entities.projects.beforeUpdate,
+    );
+    this.before(
+      "CREATE",
+      "ProjectAssignments",
+      handlers.admin.entities.projectAssignments.beforeCreate,
+    );
+    this.before(
+      "UPDATE",
+      "ProjectAssignments",
+      handlers.admin.entities.projectAssignments.beforeUpdate,
+    );
 
     // Exclude soft-deleted clients from all reads
     this.before("READ", "Clients", (req) => {

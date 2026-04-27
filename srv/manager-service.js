@@ -11,6 +11,11 @@ module.exports = class ManagerService extends cds.ApplicationService {
       handlers.manager.entities.projects.beforeCreate,
     );
     this.before(
+      "UPDATE",
+      "Projects",
+      handlers.manager.entities.projects.beforeUpdate,
+    );
+    this.before(
       "CREATE",
       "TimeEntries",
       handlers.manager.entities.timeEntries.beforeCreate,

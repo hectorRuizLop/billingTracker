@@ -32,6 +32,36 @@ async function beforeCreate(req) {
   }
 }
 
+async function beforeUpdate(req) {
+  const { status } = req.data;
+  if (status !== "C") return;
+
+  const id =
+    (Array.isArray(req.params) ? req.params[0]?.ID : req.params?.ID) ??
+    req.data.ID;
+
+  const { Projects } = cds.entities("my.billing");
+  const current = await SELECT.one.from(Projects).where({ ID: id });
+
+  if (!current) return req.error(404, "Project not found");
+
+  // Only enforce when transitioning to Closed
+  if (current.status === "C") return;
+
+  const { TimeEntries } = cds.entities("my.billing");
+  const submittedEntry = await SELECT.one.from(TimeEntries).where({
+    project_ID: id,
+    status: "S",
+  });
+
+  if (submittedEntry) {
+    return req.error(400, "Cannot close a project with submitted time entries");
+  }
+
+  req.data.closedAt = new Date().toISOString();
+  req.data.closedBy = req.user.id;
+}
+
 async function afterRead(results, _req) {
   if (!results) return;
 
@@ -72,4 +102,4 @@ async function afterRead(results, _req) {
   }
 }
 
-module.exports = { beforeCreate, afterRead };
+module.exports = { beforeCreate, beforeUpdate, afterRead };

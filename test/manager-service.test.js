@@ -1,6 +1,7 @@
 "use strict";
 
 const {
+  cds,
   GET,
   POST,
   PATCH,
@@ -13,6 +14,8 @@ const {
   PROJECT_ERP,
   ASSIGNMENT_1,
   CLIENT_1,
+  VALID_WORKDAY,
+  clearEmployeeMonthEntries,
 } = require("./helpers");
 
 describe("ManagerService", () => {
@@ -238,5 +241,135 @@ describe("ManagerService", () => {
         );
       }
     }
+  });
+
+  test("Rejects closing a project with submitted time entries", async () => {
+    const { data: project } = await POST(
+      `${BASE}/Projects`,
+      {
+        name: "Close Check Project",
+        budget: 10000,
+        client_ID: CLIENT_1,
+        manager_ID: MGR1.username,
+      },
+      { auth: MGR1 },
+    );
+
+    // Assign MGR2 so they can create a time entry
+    await POST(
+      `${BASE}/ProjectAssignments`,
+      {
+        employee_ID: MGR2.username,
+        project_ID: project.ID,
+        customRate: 100,
+        isActive: true,
+      },
+      { auth: MGR1 },
+    );
+
+    await clearEmployeeMonthEntries(MGR2.username);
+
+    // Create and submit a time entry
+    const { data: entry } = await POST(
+      `/api/employee/MyTimeEntries`,
+      {
+        date: VALID_WORKDAY,
+        hours: 2,
+        description: "Submitted entry",
+        employee_ID: MGR2.username,
+        project_ID: project.ID,
+      },
+      { auth: MGR2 },
+    );
+
+    await POST(
+      `/api/employee/submitMonth`,
+      { year: 2026, month: 4 },
+      { auth: MGR2 },
+    );
+
+    const { status, data } = await PATCH(
+      `${BASE}/Projects/${project.ID}`,
+      { status: "C" },
+      { auth: MGR1, validateStatus: () => true },
+    );
+    expect(status).toBe(400);
+    expect(data.error.message).toMatch(/submitted/i);
+
+    // Cleanup
+    await cds.run(
+      DELETE.from("my.billing.TimeEntries").where({ ID: entry.ID }),
+    );
+    await cds.run(
+      DELETE.from("my.billing.ProjectAssignments").where({
+        project_ID: project.ID,
+      }),
+    );
+    await cds.run(DELETE.from("my.billing.Projects").where({ ID: project.ID }));
+  });
+
+  test("Allows closing a project without submitted time entries and sets closedAt/closedBy", async () => {
+    const { data: project } = await POST(
+      `${BASE}/Projects`,
+      {
+        name: "Safe Close Project",
+        budget: 10000,
+        client_ID: CLIENT_1,
+        manager_ID: MGR1.username,
+      },
+      { auth: MGR1 },
+    );
+
+    const { status } = await PATCH(
+      `${BASE}/Projects/${project.ID}`,
+      { status: "C" },
+      { auth: MGR1 },
+    );
+    expect(status).toBe(200);
+
+    const { data: updated } = await GET(`${BASE}/Projects/${project.ID}`, {
+      auth: MGR1,
+    });
+    expect(updated.status).toBe("C");
+    expect(updated.closedAt).toBeTruthy();
+    expect(updated.closedBy).toBe(MGR1.username);
+
+    // Cleanup
+    await cds.run(DELETE.from("my.billing.Projects").where({ ID: project.ID }));
+  });
+
+  test("Rejects creating an assignment on a closed project", async () => {
+    const { data: project } = await POST(
+      `${BASE}/Projects`,
+      {
+        name: "Closed Assignment Project",
+        budget: 10000,
+        client_ID: CLIENT_1,
+        manager_ID: MGR1.username,
+      },
+      { auth: MGR1 },
+    );
+
+    await PATCH(
+      `${BASE}/Projects/${project.ID}`,
+      { status: "C" },
+      { auth: MGR1 },
+    );
+
+    const { status, data } = await POST(
+      `${BASE}/ProjectAssignments`,
+      {
+        employee_ID: EMP1_ID,
+        project_ID: project.ID,
+        customRate: 150,
+        isActive: true,
+      },
+      { auth: MGR1, validateStatus: () => true },
+    );
+    expect(status).toBe(400);
+    expect(data.error.message).toMatch(/closed/i);
+
+    // Cleanup
+    await cds.run(DELETE.from("my.billing.Projects").where({ ID: project.ID }));
   });
 });
