@@ -10,9 +10,9 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
     projection on db.Projects {
       *,
       virtual totalHours      : Decimal(15, 2),
-      virtual totalCost       : Decimal(15, 2),
-      virtual budgetRemaining : Decimal(15, 2),
-      virtual avgCostPerHour  : Decimal(15, 2)
+      virtual totalCost       : Decimal(19, 4), // Preserve decimals in aggregates
+      virtual budgetRemaining : Decimal(19, 4), // Avoid rounding cascade
+      virtual avgCostPerHour  : Decimal(19, 4)  // Intermediate calc accuracy
     };
 
   @restrict: [{
@@ -28,6 +28,11 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
       employee.category.name as categoryName,
       project.name           as projectName,
       @readonly rateSnapshot,
+      @readonly status,
+      @readonly billingStatus,
+      @readonly reviewedAt,
+      @readonly reviewedBy,
+      @readonly rejectionNote,
       case
         status
         when 'R'
@@ -35,7 +40,7 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
         else (
                hours * rateSnapshot
              )
-      end                    as cost         : Decimal(15, 2)
+      end                    as cost         : Decimal(19, 4) // Keep 4 decimals
     };
 
   @restrict: [{

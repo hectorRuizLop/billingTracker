@@ -171,7 +171,7 @@ entity BillingPeriods : cuid, managed {
   status     : BillingPeriodStatus default 'O';
   closedAt   : Timestamp;
   closedBy   : String;
-  totalCost  : Decimal(15, 2);
+  totalCost  : Decimal(19, 4); // Aggregate of rate*hours needs 4 decimals
   totalHours : Decimal(10, 2);
 }
 

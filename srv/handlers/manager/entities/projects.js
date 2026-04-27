@@ -3,13 +3,20 @@
 const cds = require("@sap/cds");
 
 async function beforeCreate(req) {
-  const { budget } = req.data;
+  const { Employees, Categories } = cds.entities("my.billing");
 
-  if (!budget || budget <= 0) {
-    return req.error(400, "Project budget must be greater than 0");
+  // Enforce the authenticated user as the project manager
+  const me = await SELECT.one.from(Employees).where({ externalId: req.user.id }).columns(["ID"]);
+  if (me) {
+    req.data.manager_ID = me.ID;
   }
 
-  const { Employees, Categories } = cds.entities("my.billing");
+  const { budget } = req.data;
+
+  // Weak guard fix: explicit null/undefined check instead of truthy
+  if (budget === undefined || budget === null || budget <= 0) {
+    return req.error(400, "Project budget must be greater than 0");
+  }
 
   const manager = await SELECT.one
     .from(Employees)

@@ -22,7 +22,7 @@ async function rejectEntries(req, timeEntryIds, rejectionNote) {
   }
 
   const uniqueIds = [...new Set(timeEntryIds)];
-  const { TimeEntries } = cds.entities("my.billing");
+  const { TimeEntries, Projects } = cds.entities("my.billing");
 
   const entries = await SELECT.from(TimeEntries).where({
     ID: { in: uniqueIds },
@@ -30,6 +30,17 @@ async function rejectEntries(req, timeEntryIds, rejectionNote) {
 
   if (entries.length !== uniqueIds.length) {
     return req.error(404, "One or more time entries were not found.");
+  }
+
+  // RBAC: verify all entries belong to projects managed by the current user
+  const projectIds = [...new Set(entries.map((e) => e.project_ID))];
+  const managedProjects = await SELECT.from(Projects)
+    .where({ ID: { in: projectIds }, "manager.externalId": req.user.id })
+    .columns(["ID"]);
+  const managedIds = new Set(managedProjects.map((p) => p.ID));
+  const foreignEntries = entries.filter((e) => !managedIds.has(e.project_ID));
+  if (foreignEntries.length > 0) {
+    return req.error(403, "You can only reject time entries for projects you manage.");
   }
 
   const notSubmitted = entries.filter((e) => e.status !== "S");
@@ -49,11 +60,20 @@ async function rejectEntries(req, timeEntryIds, rejectionNote) {
 
 async function approveTimeEntry(req) {
   const { timeEntryId } = req.data;
-  const { TimeEntries } = cds.entities("my.billing");
+  const { TimeEntries, Projects } = cds.entities("my.billing");
 
   const entry = await SELECT.one.from(TimeEntries).where({ ID: timeEntryId });
   if (!entry) {
     return req.error(404, `Time entry not found.`);
+  }
+
+  // RBAC: verify the entry belongs to a project managed by the current user
+  const project = await SELECT.one.from(Projects).where({
+    ID: entry.project_ID,
+    "manager.externalId": req.user.id,
+  });
+  if (!project) {
+    return req.error(403, "You can only approve time entries for projects you manage.");
   }
 
   if (entry.status !== "S") {

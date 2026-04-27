@@ -4,11 +4,11 @@ const cds = require("@sap/cds");
 const { logSecurityEvent } = require("../../shared/audit-logs");
 
 /**
- * Cambia el rol de un empleado al valor indicado.
- * Si el nuevo rol es Manager ('M'), asigna automáticamente la categoría Lead.
- * @param {import('@sap/cds').Request} req - Objeto de petición CAP con parámetros employeeId y newRole
- * @returns {string} Mensaje de confirmación
- */
+Changes an employee's role to the specified value.
+If the new role is Manager ('M'), it automatically assigns the Lead category.
+@param {import('@sap/cds').Request} req - CAP request object with parameters employeeId and newRole
+@returns {string} Confirmation message
+*/
 async function changeEmployeeRole(req) {
   const { employeeId, newRole } = req.data;
   const { Employees, Categories } = cds.entities("my.billing");
@@ -27,7 +27,13 @@ async function changeEmployeeRole(req) {
 
   // Promoting to Manager automatically assigns the Lead category
   if (newRole === "M") {
-    const lead = await SELECT.one.from(Categories).where({ code: "L" });
+    const today = new Date().toISOString().split("T")[0];
+    // Resolve the Lead category effective today
+    const lead = await SELECT.one.from(Categories).where({
+      code: "L",
+      validFrom: { "<=": today },
+      validTo: { ">=": today },
+    });
     if (lead) update.category_ID = lead.ID;
   }
 

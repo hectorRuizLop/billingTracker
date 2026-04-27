@@ -92,7 +92,8 @@ async function ensureRateSnapshot(data, current = {}) {
 }
 
 function rejectIfStatusIsNotDraft(req, status, message) {
-  if (status && status !== "D") {
+  // Weak guard fix: reject any explicit value other than exactly "D"
+  if (status !== undefined && status !== null && status !== "D") {
     req.error(400, message);
     return true;
   }
@@ -147,6 +148,10 @@ async function validateCreate(req) {
   delete req.data.rateSnapshot;
   const { date, project_ID, hours, employee_ID } = req.data;
 
+  if (!date) {
+    return req.error(400, "Date is required");
+  }
+
   if (
     rejectIfStatusIsNotDraft(
       req,
@@ -160,11 +165,9 @@ async function validateCreate(req) {
   const hoursError = validateHoursIncrement(hours);
   if (hoursError) return req.error(400, hoursError);
 
-  if (date) {
-    const dateError = validateDate(date);
-    if (dateError) return req.error(400, dateError);
-    applyMonthAndYear(req.data, date);
-  }
+  const dateError = validateDate(date);
+  if (dateError) return req.error(400, dateError);
+  applyMonthAndYear(req.data, date);
 
   const monthLockError = await ensureMonthIsOpen(
     employee_ID,

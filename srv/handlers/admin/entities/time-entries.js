@@ -10,6 +10,13 @@ async function beforeCreate(req) {
 }
 
 async function beforeUpdate(req) {
+  // Prevent direct mutation of calculated fields
+  delete req.data.billingStatus;
+  delete req.data.reviewedAt;
+  delete req.data.reviewedBy;
+  delete req.data.rejectionNote;
+  delete req.data.month;
+  delete req.data.year;
   return validateUpdate(req, "TimeEntries");
 }
 
