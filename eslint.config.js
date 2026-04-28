@@ -8,7 +8,7 @@ module.exports = [
     ignores: ['eslint.config.js', 'jest.config.js'],
   },
   {
-    files: ['srv/**/*.js', 'test/**/*.js'],
+    files: ['*.js', 'srv/**/*.js', 'test/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'commonjs',
@@ -33,6 +33,7 @@ module.exports = [
         afterAll:   'readonly',
         beforeEach: 'readonly',
         afterEach:  'readonly',
+        jest:       'readonly',
       },
     },
     rules: {
