@@ -5,7 +5,9 @@
     "@cap-js/audit-logging": "^1",
     "@cap-js/hana": "^2",
     "@sap/cds": "^9",
-    "@sap/xssec": "^4"
+    "@sap/xssec": "^4",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.10.0"
   },
   "devDependencies": {
     "@cap-js/cds-test": "^0.4.1",
