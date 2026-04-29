@@ -63,9 +63,7 @@ describe("PendingHoursReminder", () => {
   });
 
   test("uses provided transporter instead of creating one", async () => {
-    const customSendMail = jest
-      .fn()
-      .mockResolvedValue({ messageId: "custom" });
+    const customSendMail = jest.fn().mockResolvedValue({ messageId: "custom" });
     const customTransporter = { sendMail: customSendMail };
 
     const reminder = new PendingHoursReminder({

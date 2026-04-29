@@ -40,7 +40,10 @@ async function rejectEntries(req, timeEntryIds, rejectionNote) {
   const managedIds = new Set(managedProjects.map((p) => p.ID));
   const foreignEntries = entries.filter((e) => !managedIds.has(e.project_ID));
   if (foreignEntries.length > 0) {
-    return req.error(403, "You can only reject time entries for projects you manage.");
+    return req.error(
+      403,
+      "You can only reject time entries for projects you manage.",
+    );
   }
 
   const notSubmitted = entries.filter((e) => e.status !== "S");
@@ -73,7 +76,10 @@ async function approveTimeEntry(req) {
     "manager.externalId": req.user.id,
   });
   if (!project) {
-    return req.error(403, "You can only approve time entries for projects you manage.");
+    return req.error(
+      403,
+      "You can only approve time entries for projects you manage.",
+    );
   }
 
   if (entry.status !== "S") {

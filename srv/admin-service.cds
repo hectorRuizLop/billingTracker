@@ -20,6 +20,7 @@ service AdminService @(path: '/api/admin')@(requires: 'Admin') {
     };
 
   entity Categories         as projection on db.Categories;
+  entity Notifications      as projection on db.Notifications;
   action changeEmployeeRole(employeeId: UUID, newRole: String) returns String;
   action reactivateClient(clientId: UUID)                      returns String;
 

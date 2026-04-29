@@ -9,10 +9,23 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
   entity Projects           as
     projection on db.Projects {
       *,
-      virtual totalHours      : Decimal(15, 2),
-      virtual totalCost       : Decimal(19, 4), // Preserve decimals in aggregates
-      virtual budgetRemaining : Decimal(19, 4), // Avoid rounding cascade
-      virtual avgCostPerHour  : Decimal(19, 4)  // Intermediate calc accuracy
+      virtual totalHours               : Decimal(15, 2),
+      virtual totalCost                : Decimal(19, 4), // Preserve decimals in aggregates
+      virtual budgetRemaining          : Decimal(19, 4), // Avoid rounding cascade
+      virtual avgCostPerHour           : Decimal(19, 4), // Intermediate calc accuracy
+      virtual projectedTotalHours      : Decimal(15, 2),
+      virtual projectedTotalCost       : Decimal(19, 4),
+      virtual projectedBudgetRemaining : Decimal(19, 4),
+      virtual submittedHours           : Decimal(15, 2),
+      virtual submittedCost            : Decimal(19, 4),
+      virtual juniorHours              : Decimal(15, 2),
+      virtual juniorCost               : Decimal(19, 4),
+      virtual midLevelHours            : Decimal(15, 2),
+      virtual midLevelCost             : Decimal(19, 4),
+      virtual seniorHours              : Decimal(15, 2),
+      virtual seniorCost               : Decimal(19, 4),
+      virtual leadHours                : Decimal(15, 2),
+      virtual leadCost                 : Decimal(19, 4)
     };
 
   @restrict: [{

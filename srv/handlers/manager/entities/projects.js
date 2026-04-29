@@ -6,7 +6,10 @@ async function beforeCreate(req) {
   const { Employees, Categories } = cds.entities("my.billing");
 
   // Enforce the authenticated user as the project manager
-  const me = await SELECT.one.from(Employees).where({ externalId: req.user.id }).columns(["ID"]);
+  const me = await SELECT.one
+    .from(Employees)
+    .where({ externalId: req.user.id })
+    .columns(["ID"]);
   if (me) {
     req.data.manager_ID = me.ID;
   }
@@ -89,6 +92,36 @@ async function afterRead(results, _req) {
     .where({ "T.project_ID": { in: projectIds }, "T.status": "A" })
     .groupBy("T.project_ID");
 
+  const projectedResults = await SELECT.from("my.billing.TimeEntries as T")
+    .leftJoin("my.billing.ProjectAssignments as A")
+    .on("T.employee_ID = A.employee_ID and T.project_ID = A.project_ID")
+    .columns(
+      "T.project_ID",
+      "SUM(T.hours) as projectedTotalHours",
+      "SUM(T.hours * COALESCE(T.rateSnapshot, A.customRate)) as projectedTotalCost",
+    )
+    .where({
+      "T.project_ID": { in: projectIds },
+      "T.status": { in: ["A", "S"] },
+    })
+    .groupBy("T.project_ID");
+
+  const categoryResults = await SELECT.from("my.billing.TimeEntries as T")
+    .leftJoin("my.billing.ProjectAssignments as A")
+    .on("T.employee_ID = A.employee_ID and T.project_ID = A.project_ID")
+    .leftJoin("my.billing.Employees as E")
+    .on("T.employee_ID = E.ID")
+    .leftJoin("my.billing.Categories as C")
+    .on("E.category_ID = C.ID")
+    .columns(
+      "T.project_ID",
+      "C.code as categoryCode",
+      "SUM(T.hours) as hours",
+      "SUM(T.hours * COALESCE(T.rateSnapshot, A.customRate)) as cost",
+    )
+    .where({ "T.project_ID": { in: projectIds }, "T.status": "A" })
+    .groupBy("T.project_ID", "C.code");
+
   const aggByProject = {};
   for (const row of aggResults) {
     aggByProject[row.project_ID] = {
@@ -97,15 +130,60 @@ async function afterRead(results, _req) {
     };
   }
 
+  const projectedByProject = {};
+  for (const row of projectedResults) {
+    projectedByProject[row.project_ID] = {
+      projectedTotalHours: row.projectedTotalHours || 0,
+      projectedTotalCost: row.projectedTotalCost || 0,
+    };
+  }
+
+  const categoryByProject = {};
+  for (const row of categoryResults) {
+    if (!categoryByProject[row.project_ID]) {
+      categoryByProject[row.project_ID] = {};
+    }
+    categoryByProject[row.project_ID][row.categoryCode] = {
+      hours: row.hours || 0,
+      cost: row.cost || 0,
+    };
+  }
+
   for (const project of projects) {
     const agg = aggByProject[project.ID] || { totalHours: 0, totalCost: 0 };
+    const projected = projectedByProject[project.ID] || {
+      projectedTotalHours: 0,
+      projectedTotalCost: 0,
+    };
     const budget = project.budget || 0;
+    const cats = categoryByProject[project.ID] || {};
 
     project.totalHours = agg.totalHours;
     project.totalCost = agg.totalCost;
     project.budgetRemaining = budget - agg.totalCost;
     project.avgCostPerHour =
       agg.totalHours > 0 ? agg.totalCost / agg.totalHours : 0;
+
+    project.projectedTotalHours = projected.projectedTotalHours;
+    project.projectedTotalCost = projected.projectedTotalCost;
+    project.projectedBudgetRemaining = budget - projected.projectedTotalCost;
+    project.submittedHours = projected.projectedTotalHours - agg.totalHours;
+    project.submittedCost = projected.projectedTotalCost - agg.totalCost;
+
+    const catDefaults = { hours: 0, cost: 0 };
+    const j = cats["J"] || catDefaults;
+    const m = cats["M"] || catDefaults;
+    const s = cats["S"] || catDefaults;
+    const l = cats["L"] || catDefaults;
+
+    project.juniorHours = j.hours;
+    project.juniorCost = j.cost;
+    project.midLevelHours = m.hours;
+    project.midLevelCost = m.cost;
+    project.seniorHours = s.hours;
+    project.seniorCost = s.cost;
+    project.leadHours = l.hours;
+    project.leadCost = l.cost;
   }
 }
 

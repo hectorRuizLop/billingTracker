@@ -7,8 +7,12 @@ module.exports = async function server(o) {
 
   if (process.env.NODE_ENV !== "test") {
     const { PendingHoursReminder } = require("./srv/jobs/pending-hours-reminder");
-    const reminder = new PendingHoursReminder();
-    reminder.start();
+    const pendingReminder = new PendingHoursReminder();
+    pendingReminder.start();
+
+    const { EmployeeDraftReminder } = require("./srv/jobs/employee-draft-reminder");
+    const draftReminder = new EmployeeDraftReminder();
+    draftReminder.start();
   }
 
   return app;

@@ -11,7 +11,10 @@ async function beforeCreate(req) {
 
   // Force the entry owner to the authenticated employee
   const { Employees } = cds.entities("my.billing");
-  const me = await SELECT.one.from(Employees).where({ externalId: req.user.id }).columns(["ID"]);
+  const me = await SELECT.one
+    .from(Employees)
+    .where({ externalId: req.user.id })
+    .columns(["ID"]);
   if (me && employee_ID !== me.ID) {
     return req.error(403, "You can only create time entries for yourself.");
   }
@@ -40,7 +43,10 @@ async function beforeUpdate(req) {
     req.data.ID;
   const current = await SELECT.one.from(TimeEntries).where({ ID: id });
   if (current) {
-    const me = await SELECT.one.from(Employees).where({ externalId: req.user.id }).columns(["ID"]);
+    const me = await SELECT.one
+      .from(Employees)
+      .where({ externalId: req.user.id })
+      .columns(["ID"]);
     if (me && current.employee_ID !== me.ID) {
       return req.error(403, "You can only update your own time entries.");
     }

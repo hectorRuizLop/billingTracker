@@ -101,8 +101,8 @@ service EmployeeService @(path: '/api/employee')@(requires: [
           employee.externalId as employeeExternalId : String,
           project.ID          as project_ID         : UUID,
           project.name        as projectName        : String,
-          @readonly month,    
-          @readonly year,     
+          @readonly month,
+          @readonly year,
           @readonly rateSnapshot
     };
 
