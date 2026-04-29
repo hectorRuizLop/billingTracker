@@ -46,7 +46,10 @@ module.exports = class ManagerService extends cds.ApplicationService {
 
     this.before("UPDATE", "TimeEntries", (req) => {
       // Force state transitions only through custom actions
-      req.error(403, "Direct updates to TimeEntries are not allowed. Use approveTimeEntry or rejectTimeEntry.");
+      return req.error(
+        403,
+        "Direct updates to TimeEntries are not allowed. Use approveTimeEntry or rejectTimeEntry.",
+      );
     });
 
     return super.init();

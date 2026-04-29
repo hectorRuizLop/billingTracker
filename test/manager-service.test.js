@@ -14,6 +14,7 @@ const {
   PROJECT_ERP,
   ASSIGNMENT_1,
   CLIENT_1,
+  TIME_ENTRY_SUBMITTED_EMP1,
   VALID_WORKDAY,
   clearEmployeeMonthEntries,
 } = require("./helpers");
@@ -208,6 +209,42 @@ describe("ManagerService", () => {
     expect(parseFloat(mobile.avgCostPerHour)).toBe(0);
   });
 
+  test("Projects expose projected and category breakdown fields", async () => {
+    const { data, status } = await GET(`${BASE}/Projects`, { auth: MGR1 });
+    expect(status).toBe(200);
+
+    const cp = data.value.find((p) => p.ID === PROJECT_CP);
+    expect(cp).toBeDefined();
+    // Approved = 6h =270 / Submitted = 16h = 720 / Projected = 22h =990
+    expect(parseFloat(cp.projectedTotalHours)).toBe(22);
+    expect(parseFloat(cp.projectedTotalCost)).toBeCloseTo(990, 2);
+    expect(parseFloat(cp.projectedBudgetRemaining)).toBeCloseTo(
+      parseFloat(cp.budget) - 990,
+      2,
+    );
+    expect(parseFloat(cp.submittedHours)).toBe(16);
+    expect(parseFloat(cp.submittedCost)).toBeCloseTo(720, 2);
+
+    // Category breakdown, approved only, both employees are Junior
+    expect(parseFloat(cp.juniorHours)).toBe(6);
+    expect(parseFloat(cp.juniorCost)).toBeCloseTo(270, 2);
+    expect(parseFloat(cp.midLevelHours)).toBe(0);
+    expect(parseFloat(cp.midLevelCost)).toBe(0);
+    expect(parseFloat(cp.seniorHours)).toBe(0);
+    expect(parseFloat(cp.seniorCost)).toBe(0);
+    expect(parseFloat(cp.leadHours)).toBe(0);
+    expect(parseFloat(cp.leadCost)).toBe(0);
+
+    const mobile = data.value.find(
+      (p) => p.ID === "40000000-0000-0000-0000-000000000003",
+    );
+    expect(mobile).toBeDefined();
+    expect(parseFloat(mobile.projectedTotalHours)).toBe(0);
+    expect(parseFloat(mobile.projectedTotalCost)).toBe(0);
+    expect(parseFloat(mobile.submittedHours)).toBe(0);
+    expect(parseFloat(mobile.juniorHours)).toBe(0);
+  });
+
   test("Projects expose computed financial fields on single read", async () => {
     const { data, status } = await GET(`${BASE}/Projects/${PROJECT_CP}`, {
       auth: MGR1,
@@ -371,5 +408,14 @@ describe("ManagerService", () => {
 
     // Cleanup
     await cds.run(DELETE.from("my.billing.Projects").where({ ID: project.ID }));
+  });
+  test("MGR1 cannot update a Time Entry directly", async () => {
+    const { status, data } = await PATCH(
+      `/api/manager/TimeEntries/${TIME_ENTRY_SUBMITTED_EMP1}`,
+      { hours: 10 },
+      { auth: MGR1, validateStatus: () => true },
+    );
+
+    expect(status).toBe(403);
   });
 });

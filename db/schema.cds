@@ -207,3 +207,13 @@ entity InvoiceLines : cuid {
   rateSnapshot : Decimal(14, 4);
   amount       : Decimal(19, 4);
 }
+
+entity Notifications : cuid, managed {
+  recipient : Association to Employees @mandatory;
+  type      : String(50) default 'DraftReminder';
+  subject   : String(200);
+  message   : String(1000);
+  sentAt    : Timestamp;
+  status    : String(1) default 'P'; // P=Pending, S=Sent, F=Failed
+  isRead    : Boolean default false;
+}
