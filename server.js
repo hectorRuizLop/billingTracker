@@ -13,6 +13,10 @@ module.exports = async function server(o) {
     const { EmployeeDraftReminder } = require("./srv/jobs/employee-draft-reminder");
     const draftReminder = new EmployeeDraftReminder();
     draftReminder.start();
+
+    const { MonthlyInvoiceJob } = require("./srv/jobs/monthly-invoice");
+    const monthlyInvoice = new MonthlyInvoiceJob();
+    monthlyInvoice.start();
   }
 
   return app;
