@@ -1,7 +1,14 @@
 "use strict";
 
-const { cds, EMP1_ID, EMP2_ID, PROJECT_CP, PROJECT_MOBILE, CLIENT_1 } =
-  require("./helpers");
+const {
+  cds,
+  EMP1_ID,
+  EMP2_ID,
+  MGR1_ID,
+  PROJECT_CP,
+  PROJECT_MOBILE,
+  CLIENT_1,
+} = require("./helpers");
 const { MonthlyInvoiceJob } = require("../srv/jobs/monthly-invoice");
 
 jest.mock("nodemailer");
@@ -10,6 +17,10 @@ const nodemailer = require("nodemailer");
 describe("MonthlyInvoiceJob", () => {
   let sendMailMock;
   let createTransportMock;
+  let logInfoMock;
+  let logErrorMock;
+
+  const SECOND_PROJECT_ID = "40000000-0000-0000-0000-000000000099";
 
   beforeEach(() => {
     sendMailMock = jest.fn().mockResolvedValue({ messageId: "test" });
@@ -17,10 +28,20 @@ describe("MonthlyInvoiceJob", () => {
       sendMail: sendMailMock,
     });
     nodemailer.createTransport = createTransportMock;
+
+    logInfoMock = jest.fn();
+    logErrorMock = jest.fn();
+    jest.spyOn(cds, "log").mockImplementation((name) => {
+      if (name === "monthly-invoice") {
+        return { info: logInfoMock, error: logErrorMock };
+      }
+      return { info: jest.fn(), error: jest.fn() };
+    });
   });
 
   afterEach(async () => {
     jest.clearAllMocks();
+    jest.restoreAllMocks();
 
     await cds.run(
       DELETE.from("my.billing.TimeEntries").where({
@@ -28,6 +49,10 @@ describe("MonthlyInvoiceJob", () => {
           in: [
             "70000000-0000-0000-0000-000000000100",
             "70000000-0000-0000-0000-000000000101",
+            "70000000-0000-0000-0000-000000000102",
+            "70000000-0000-0000-0000-000000000103",
+            "70000000-0000-0000-0000-000000000104",
+            "70000000-0000-0000-0000-000000000105",
           ],
         },
       }),
@@ -41,6 +66,16 @@ describe("MonthlyInvoiceJob", () => {
       UPDATE("my.billing.TimeEntries")
         .set({ billingStatus: "U" })
         .where({ billingStatus: "I" }),
+    );
+    await cds.run(
+      UPDATE("my.billing.Projects")
+        .set({ status: "O" })
+        .where({ ID: PROJECT_CP }),
+    );
+    await cds.run(
+      DELETE.from("my.billing.Projects").where({
+        ID: SECOND_PROJECT_ID,
+      }),
     );
   });
 
@@ -92,6 +127,57 @@ describe("MonthlyInvoiceJob", () => {
     expect(call.text).toMatch(/€630\.00/);
   });
 
+  // TEST NUEVO: cubre la corrección de elegibilidad por cliente
+  test("does not invoice client when any of their projects has pending entries", async () => {
+    await cds.run(
+      INSERT.into("my.billing.Projects").entries({
+        ID: SECOND_PROJECT_ID,
+        name: "Second Project",
+        status: "O",
+        budget: 100000,
+        client_ID: CLIENT_1,
+        manager_ID: MGR1_ID,
+      }),
+    );
+
+    await cds.run(
+      INSERT.into("my.billing.TimeEntries").entries([
+        {
+          ID: "70000000-0000-0000-0000-000000000100",
+          date: "2026-03-10",
+          hours: 8,
+          description: "Approved work on first project",
+          status: "A",
+          rateSnapshot: 45.0,
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+          month: 3,
+          year: 2026,
+          billingStatus: "U",
+        },
+        {
+          ID: "70000000-0000-0000-0000-000000000101",
+          date: "2026-03-11",
+          hours: 5,
+          description: "Draft work on second project",
+          status: "D",
+          rateSnapshot: 45.0,
+          employee_ID: EMP1_ID,
+          project_ID: SECOND_PROJECT_ID,
+          month: 3,
+          year: 2026,
+          billingStatus: "U",
+        },
+      ]),
+    );
+
+    const job = new MonthlyInvoiceJob();
+    const result = await job.run(new Date("2026-04-01"));
+
+    expect(result.sent).toBe(0);
+    expect(sendMailMock).not.toHaveBeenCalled();
+  });
+
   test("skips projects with pending draft or submitted entries", async () => {
     await cds.run(
       INSERT.into("my.billing.TimeEntries").entries([
@@ -129,6 +215,38 @@ describe("MonthlyInvoiceJob", () => {
 
     expect(result.sent).toBe(0);
     expect(sendMailMock).not.toHaveBeenCalled();
+  });
+
+  test("includes closed projects even with pending entries logic", async () => {
+    await cds.run(
+      UPDATE("my.billing.Projects")
+        .set({ status: "C" })
+        .where({ ID: PROJECT_CP }),
+    );
+
+    await cds.run(
+      INSERT.into("my.billing.TimeEntries").entries([
+        {
+          ID: "70000000-0000-0000-0000-000000000100",
+          date: "2026-03-10",
+          hours: 8,
+          description: "Design work",
+          status: "A",
+          rateSnapshot: 45.0,
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+          month: 3,
+          year: 2026,
+          billingStatus: "U",
+        },
+      ]),
+    );
+
+    const job = new MonthlyInvoiceJob();
+    const result = await job.run(new Date("2026-04-01"));
+
+    expect(result.sent).toBe(1);
+    expect(sendMailMock).toHaveBeenCalledTimes(1);
   });
 
   test("returns empty when no unbilled entries exist for previous month", async () => {

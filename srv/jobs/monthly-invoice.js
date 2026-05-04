@@ -48,161 +48,152 @@ class MonthlyInvoiceJob {
       .where({ ID: { in: projectIds } })
       .columns("ID", "name", "status", "client_ID");
 
-    // Eligible projects
-    const eligibleProjectIds = [];
+    // One only bulk query
+    const pendingEntries = await SELECT.from(TimeEntries)
+      .where({
+        project_ID: { in: projectIds },
+        year,
+        month,
+        status: { in: ["D", "S"] },
+      })
+      .columns("project_ID");
+
+    const projectsWithPending = new Set(
+      pendingEntries.map((e) => e.project_ID),
+    );
+
+    const eligibleProjectIds = new Set();
     for (const project of projects) {
-      if (project.status === "C") {
-        eligibleProjectIds.push(project.ID);
-        continue;
-      }
-
-      // One consult per project
-      const pendingEntry = await SELECT.one
-        .from(TimeEntries)
-        .where({
-          project_ID: project.ID,
-          year,
-          month,
-          status: { in: ["D", "S"] },
-        })
-        .columns("ID");
-
-      if (!pendingEntry) {
-        eligibleProjectIds.push(project.ID);
+      if (project.status === "C" || !projectsWithPending.has(project.ID)) {
+        eligibleProjectIds.add(project.ID);
       }
     }
 
-    if (eligibleProjectIds.length === 0) {
+    if (eligibleProjectIds.size === 0) {
       return { sent: 0, clients: [] };
-    } // 4. Entries aprobadas de proyectos elegibles
+    }
+
+    // Group projects by client
+    const clientAllProjects = {};
+    for (const project of projects) {
+      const clientId = project.client_ID;
+      if (!clientAllProjects[clientId]) {
+        clientAllProjects[clientId] = [];
+      }
+      clientAllProjects[clientId].push(project);
+    }
+
+    // One client is elegible if ALL its projects are elegible 
+    const eligibleClientIds = [];
+    const eligibleClientProjectIds = [];
+    for (const [clientId, clientProjects] of Object.entries(
+      clientAllProjects,
+    )) {
+      const allEligible = clientProjects.every((p) =>
+        eligibleProjectIds.has(p.ID),
+      );
+      if (allEligible) {
+        eligibleClientIds.push(clientId);
+        for (const p of clientProjects) {
+          eligibleClientProjectIds.push(p.ID);
+        }
+      }
+    }
+
+    if (eligibleClientIds.length === 0) {
+      return { sent: 0, clients: [] };
+    }
 
     const approvedEntries = await SELECT.from(TimeEntries)
-
       .where({
-        project_ID: { in: eligibleProjectIds },
-
+        project_ID: { in: eligibleClientProjectIds },
         year,
-
         month,
-
         status: "A",
-
         billingStatus: { in: ["U", "B"] },
       })
-
       .columns("ID", "hours", "rateSnapshot", "project_ID", "description");
 
-    const eligibleProjects = projects.filter((p) =>
-      eligibleProjectIds.includes(p.ID),
-    );
-
-    const clientIds = [...new Set(eligibleProjects.map((p) => p.client_ID))];
-
     const clients = await SELECT.from(Clients)
-
-      .where({ ID: { in: clientIds }, isDeleted: false })
+      .where({ ID: { in: eligibleClientIds }, isDeleted: false })
       .columns("ID", "name", "email");
 
-    const projectMap = {};
+    if (clients.length === 0) {
+      return { sent: 0, clients: [] };
+    }
 
-    for (const p of eligibleProjects) {
+    const projectMap = {};
+    for (const p of projects) {
       projectMap[p.ID] = p;
     }
 
     const clientMap = {};
-
     for (const c of clients) {
       clientMap[c.ID] = c;
     }
 
-    // Group per client and project
-
-    const clientProjects = {};
+    // Group by client → project
+    const clientProjectsData = {};
     for (const entry of approvedEntries) {
       const project = projectMap[entry.project_ID];
       if (!project) continue;
       const clientId = project.client_ID;
-      if (!clientProjects[clientId]) {
-        clientProjects[clientId] = {};
+      if (!clientProjectsData[clientId]) {
+        clientProjectsData[clientId] = {};
       }
-
-      if (!clientProjects[clientId][project.ID]) {
-        clientProjects[clientId][project.ID] = {
+      if (!clientProjectsData[clientId][project.ID]) {
+        clientProjectsData[clientId][project.ID] = {
           name: project.name,
           entries: [],
           totalHours: 0,
           totalCost: 0,
         };
       }
-
       const hours = parseFloat(entry.hours);
-
       const rate = parseFloat(entry.rateSnapshot || 0);
-
       const cost = hours * rate;
-
-      clientProjects[clientId][project.ID].entries.push(entry);
-
-      clientProjects[clientId][project.ID].totalHours += hours;
-
-      clientProjects[clientId][project.ID].totalCost += cost;
+      clientProjectsData[clientId][project.ID].entries.push(entry);
+      clientProjectsData[clientId][project.ID].totalHours += hours;
+      clientProjectsData[clientId][project.ID].totalCost += cost;
     }
 
-    // Make sure all eligible projects are included
-
-    for (const projectId of eligibleProjectIds) {
+    for (const projectId of eligibleClientProjectIds) {
       const project = projectMap[projectId];
-
       if (!project) continue;
-
       const clientId = project.client_ID;
-
-      if (!clientProjects[clientId]) {
-        clientProjects[clientId] = {};
+      if (!clientProjectsData[clientId]) {
+        clientProjectsData[clientId] = {};
       }
-
-      if (!clientProjects[clientId][project.ID]) {
-        clientProjects[clientId][project.ID] = {
+      if (!clientProjectsData[clientId][project.ID]) {
+        clientProjectsData[clientId][project.ID] = {
           name: project.name,
-
           entries: [],
-
           totalHours: 0,
-
           totalCost: 0,
         };
       }
     }
 
     const transporter = this._transporter || this._createTransporter();
-
     const sentClients = [];
 
-    for (const clientId of Object.keys(clientProjects)) {
+    for (const clientId of Object.keys(clientProjectsData)) {
       const client = clientMap[clientId];
-
       if (!client || !client.email) continue;
 
-      const projectsData = Object.values(clientProjects[clientId]);
-
+      const projectsData = Object.values(clientProjectsData[clientId]);
       let overallHours = 0;
-
       let overallCost = 0;
 
       const projectLines = projectsData
-
         .map((p) => {
           overallHours += p.totalHours;
-
           overallCost += p.totalCost;
-
           return `- ${p.name}\n  Hours: ${p.totalHours.toFixed(2)}h\n  Cost: €${p.totalCost.toFixed(2)}`;
         })
-
         .join("\n\n");
 
       const subject = `Monthly Invoice Summary - ${month}/${year}`;
-
       const text =
         `${client.name},\n\n` +
         `Summary${month}/${year}:\n\n` +
@@ -213,48 +204,15 @@ class MonthlyInvoiceJob {
         `Billing Tracker`;
 
       try {
-        if (transporter) {
-          await transporter.sendMail({
-            from: process.env.EMAIL_FROM || "noreply@nubexx.com",
-
-            to: client.email,
-
-            subject,
-
-            text,
-          });
-        } else {
-          log.info(
-            `[Simulated Email] To: ${client.email}\nSubject: ${subject}\n${text}`,
-          );
-        }
-
-        // Create invoice 
-
         const invoiceId = cds.utils.uuid();
-
         const today = now.toISOString().split("T")[0];
-
-        await INSERT.into(Invoices).entries({
-          ID: invoiceId,
-
-          invoiceNumber: `INV-${clientId.substring(0, 8)}-${year}${String(month).padStart(2, "0")}`,
-          issueDate: today,
-          status: "S",
-          currency: "EUR",
-          subtotal: overallCost,
-          total: overallCost,
-          client_ID: clientId,
-        });
-
+        const entryIds = [];
         const invoiceLines = [];
-
         for (const p of projectsData) {
           for (const entry of p.entries) {
+            entryIds.push(entry.ID);
             const hours = parseFloat(entry.hours);
-
             const rate = parseFloat(entry.rateSnapshot || 0);
-
             invoiceLines.push({
               ID: cds.utils.uuid(),
               invoice_ID: invoiceId,
@@ -267,27 +225,48 @@ class MonthlyInvoiceJob {
           }
         }
 
-        if (invoiceLines.length > 0) {
-          await INSERT.into(InvoiceLines).entries(invoiceLines);
-        }
+        await cds.tx(async (tx) => {
+          await tx.run(
+            INSERT.into(Invoices).entries({
+              ID: invoiceId,
+              invoiceNumber: `INV-${clientId.substring(0, 8)}-${year}${String(month).padStart(2, "0")}`,
+              issueDate: today,
+              status: "S",
+              currency: "EUR",
+              subtotal: overallCost,
+              total: overallCost,
+              client_ID: clientId,
+            }),
+          );
 
-        const entryIds = [];
-
-        for (const p of projectsData) {
-          for (const entry of p.entries) {
-            entryIds.push(entry.ID);
+          if (invoiceLines.length > 0) {
+            await tx.run(INSERT.into(InvoiceLines).entries(invoiceLines));
           }
-        }
 
-        if (entryIds.length > 0) {
-          await UPDATE(TimeEntries)
-            .set({ billingStatus: "I" })
-            .where({ ID: { in: entryIds } });
+          if (entryIds.length > 0) {
+            await tx.run(
+              UPDATE(TimeEntries)
+                .set({ billingStatus: "I" })
+                .where({ ID: { in: entryIds } }),
+            );
+          }
+        });
+
+        // Email is send after transaction commit to avoid sending emails for failed transactions
+        if (transporter) {
+          await transporter.sendMail({
+            from: process.env.EMAIL_FROM || "noreply@nubexx.com",
+            to: client.email,
+            subject,
+            text,
+          });
+        } else {
+          log.info(`[Simulated Email] To: ${client.email}\nSubject: ${subject}\n${text}`);
         }
 
         sentClients.push(client.email);
       } catch (err) {
-        log.error(`Failed to send invoice to ${client.email}:`, err);
+        log.error(`Failed to process invoice for ${client.email}:`, err);
       }
     }
 
@@ -297,13 +276,10 @@ class MonthlyInvoiceJob {
   _createTransporter() {
     return nodemailer.createTransport({
       host: process.env.SMTP_HOST,
-
       port: process.env.SMTP_PORT
         ? parseInt(process.env.SMTP_PORT, 10)
         : undefined,
-
       secure: process.env.SMTP_SECURE === "true",
-
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
