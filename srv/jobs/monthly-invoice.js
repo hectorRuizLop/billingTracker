@@ -20,14 +20,170 @@ class MonthlyInvoiceJob {
     return { year, month };
   }
 
+  _buildInvoiceNumber(clientId, year, month) {
+    return `INV-${clientId.substring(0, 8)}-${year}${String(month).padStart(2, "0")}`;
+  }
+
   async run(now = new Date()) {
     const { year, month } = this._getPreviousMonth(now);
+    const log = cds.log("monthly-invoice");
+    const transporter = this._transporter || this._createTransporter();
+    const sentClients = [];
+
+    // Re try sending draft invoices first
+    const retried = await this._retryDraftInvoices(
+      year, month, now, transporter, log,
+    );
+    sentClients.push(...retried);
+
+    // Create new invoices for eligible clients and send
+    const newlySent = await this._createNewInvoices(
+      year, month, now, transporter, log,
+    );
+    sentClients.push(...newlySent);
+
+    return { sent: sentClients.length, clients: sentClients };
+  }
+
+  async _retryDraftInvoices(year, month, now, transporter, log) {
+    const { Invoices, InvoiceLines, TimeEntries, Projects, Clients } =
+      cds.entities("my.billing");
+    const sentClients = [];
+
+    const invoiceNumberPattern = `%-${year}${String(month).padStart(2, "0")}`;
+    const draftInvoices = await SELECT.from(Invoices)
+      .where({
+        status: "D",
+        invoiceNumber: { like: invoiceNumberPattern },
+      })
+      .columns("ID", "client_ID", "invoiceNumber", "subtotal", "total");
+
+    if (draftInvoices.length === 0) {
+      return sentClients;
+    }
+
+    const invoiceIds = draftInvoices.map((i) => i.ID);
+    const lines = await SELECT.from(InvoiceLines)
+      .where({ invoice_ID: { in: invoiceIds } })
+      .columns(
+        "invoice_ID", "timeEntry_ID", "hours",
+        "rateSnapshot", "amount", "description",
+      );
+
+    const entryIds = [...new Set(lines.map((l) => l.timeEntry_ID))];
+    const entries = await SELECT.from(TimeEntries)
+      .where({ ID: { in: entryIds } })
+      .columns("ID", "project_ID", "hours", "rateSnapshot", "description");
+
+    const projectIds = [...new Set(entries.map((e) => e.project_ID))];
+    const projects = await SELECT.from(Projects)
+      .where({ ID: { in: projectIds } })
+      .columns("ID", "name", "client_ID");
+
+    const clientIds = [...new Set(draftInvoices.map((i) => i.client_ID))];
+    const clients = await SELECT.from(Clients)
+      .where({ ID: { in: clientIds }, isDeleted: false })
+      .columns("ID", "name", "email");
+
+    const clientMap = {};
+    for (const c of clients) clientMap[c.ID] = c;
+
+    const projectMap = {};
+    for (const p of projects) projectMap[p.ID] = p;
+
+    const invoiceProjects = {};
+    for (const line of lines) {
+      const entry = entries.find((e) => e.ID === line.timeEntry_ID);
+      if (!entry) continue;
+      const project = projectMap[entry.project_ID];
+      if (!project) continue;
+      if (!invoiceProjects[line.invoice_ID]) {
+        invoiceProjects[line.invoice_ID] = {};
+      }
+      if (!invoiceProjects[line.invoice_ID][project.ID]) {
+        invoiceProjects[line.invoice_ID][project.ID] = {
+          name: project.name, totalHours: 0, totalCost: 0,
+        };
+      }
+      const hours = parseFloat(entry.hours);
+      const rate = parseFloat(entry.rateSnapshot || 0);
+      invoiceProjects[line.invoice_ID][project.ID].totalHours += hours;
+      invoiceProjects[line.invoice_ID][project.ID].totalCost += hours * rate;
+    }
+
+    for (const invoice of draftInvoices) {
+      const client = clientMap[invoice.client_ID];
+      if (!client || !client.email) continue;
+
+      const projectsData = Object.values(invoiceProjects[invoice.ID] || {});
+      let overallHours = 0;
+      let overallCost = 0;
+
+      const projectLines = projectsData
+        .map((p) => {
+          overallHours += p.totalHours;
+          overallCost += p.totalCost;
+          return `- ${p.name}\n  Hours: ${p.totalHours.toFixed(2)}h\n  Cost: €${p.totalCost.toFixed(2)}`;
+        })
+        .join("\n\n");
+
+      const subject = `Monthly Invoice Summary - ${month}/${year}`;
+      const text =
+        `Dear ${client.name},\n\n` +
+        `Please find below your monthly invoice summary for ${month}/${year}:\n\n` +
+        `${projectLines}\n\n` +
+        `Overall Total:\n` +
+        `  Hours: ${overallHours.toFixed(2)}h\n` +
+        `  Cost: €${overallCost.toFixed(2)}\n\n` +
+        `Best regards,\nBilling Tracker`;
+
+      try {
+        if (transporter) {
+          await transporter.sendMail({
+            from: process.env.EMAIL_FROM || "noreply@nubexx.com",
+            to: client.email,
+            subject,
+            text,
+          });
+        } else {
+          log.info(`[Simulated Email] To: ${client.email}\nSubject: ${subject}\n${text}`);
+        }
+
+        const invoiceEntryIds = lines
+          .filter((l) => l.invoice_ID === invoice.ID)
+          .map((l) => l.timeEntry_ID);
+
+        await cds.tx(async (tx) => {
+          await tx.run(
+            UPDATE(Invoices).set({ status: "S" }).where({ ID: invoice.ID }),
+          );
+          if (invoiceEntryIds.length > 0) {
+            await tx.run(
+              UPDATE(TimeEntries)
+                .set({ billingStatus: "I" })
+                .where({ ID: { in: invoiceEntryIds } }),
+            );
+          }
+        });
+
+        sentClients.push(client.email);
+      } catch (err) {
+        log.error(
+          `Retry failed for invoice ${invoice.invoiceNumber} (${client.email}):`,
+          err,
+        );
+      }
+    }
+
+    return sentClients;
+  }
+
+  async _createNewInvoices(year, month, now, transporter, log) {
     const { TimeEntries, Projects, Clients, Invoices, InvoiceLines } =
       cds.entities("my.billing");
+    const sentClients = [];
 
-    const log = cds.log("monthly-invoice");
-
-    // Projects entries unbilled of previous month
+    // Projects with entries unbilled
     const entryProjects = await SELECT.distinct
       .from(TimeEntries)
       .where({
@@ -37,18 +193,15 @@ class MonthlyInvoiceJob {
       })
       .columns("project_ID");
 
-    if (entryProjects.length === 0) {
-      return { sent: 0, clients: [] };
-    }
+    if (entryProjects.length === 0) return sentClients;
 
     const projectIds = entryProjects.map((e) => e.project_ID);
 
-    // Obtain projects
     const projects = await SELECT.from(Projects)
       .where({ ID: { in: projectIds } })
       .columns("ID", "name", "status", "client_ID");
 
-    // One only bulk query
+    // Bulk query of pendings
     const pendingEntries = await SELECT.from(TimeEntries)
       .where({
         project_ID: { in: projectIds },
@@ -69,11 +222,9 @@ class MonthlyInvoiceJob {
       }
     }
 
-    if (eligibleProjectIds.size === 0) {
-      return { sent: 0, clients: [] };
-    }
+    if (eligibleProjectIds.size === 0) return sentClients;
 
-    // Group projects by client
+    // Eligible projects grouped by client
     const clientAllProjects = {};
     for (const project of projects) {
       const clientId = project.client_ID;
@@ -83,7 +234,6 @@ class MonthlyInvoiceJob {
       clientAllProjects[clientId].push(project);
     }
 
-    // One client is elegible if ALL its projects are elegible 
     const eligibleClientIds = [];
     const eligibleClientProjectIds = [];
     for (const [clientId, clientProjects] of Object.entries(
@@ -100,13 +250,40 @@ class MonthlyInvoiceJob {
       }
     }
 
-    if (eligibleClientIds.length === 0) {
-      return { sent: 0, clients: [] };
-    }
+    if (eligibleClientIds.length === 0) return sentClients;
+
+    // Clients that already have an invoice excluded 
+    const existingInvoices = await SELECT.from(Invoices)
+      .where({
+        client_ID: { in: eligibleClientIds },
+        invoiceNumber: {
+          like: `%-${year}${String(month).padStart(2, "0")}`,
+        },
+      })
+      .columns("client_ID", "invoiceNumber");
+
+    const clientsWithInvoice = new Set(
+      existingInvoices.map((i) => i.client_ID),
+    );
+
+    const newEligibleClientIds = eligibleClientIds.filter(
+      (id) => !clientsWithInvoice.has(id),
+    );
+
+    if (newEligibleClientIds.length === 0) return sentClients;
+
+    // Approved entries
+    const newEligibleProjectIds = projects
+      .filter(
+        (p) =>
+          eligibleProjectIds.has(p.ID) &&
+          newEligibleClientIds.includes(p.client_ID),
+      )
+      .map((p) => p.ID);
 
     const approvedEntries = await SELECT.from(TimeEntries)
       .where({
-        project_ID: { in: eligibleClientProjectIds },
+        project_ID: { in: newEligibleProjectIds },
         year,
         month,
         status: "A",
@@ -115,24 +292,18 @@ class MonthlyInvoiceJob {
       .columns("ID", "hours", "rateSnapshot", "project_ID", "description");
 
     const clients = await SELECT.from(Clients)
-      .where({ ID: { in: eligibleClientIds }, isDeleted: false })
+      .where({ ID: { in: newEligibleClientIds }, isDeleted: false })
       .columns("ID", "name", "email");
 
-    if (clients.length === 0) {
-      return { sent: 0, clients: [] };
-    }
+    if (clients.length === 0) return sentClients;
 
     const projectMap = {};
-    for (const p of projects) {
-      projectMap[p.ID] = p;
-    }
+    for (const p of projects) projectMap[p.ID] = p;
 
     const clientMap = {};
-    for (const c of clients) {
-      clientMap[c.ID] = c;
-    }
+    for (const c of clients) clientMap[c.ID] = c;
 
-    // Group by client → project
+    // 6. Agrupar
     const clientProjectsData = {};
     for (const entry of approvedEntries) {
       const project = projectMap[entry.project_ID];
@@ -157,7 +328,7 @@ class MonthlyInvoiceJob {
       clientProjectsData[clientId][project.ID].totalCost += cost;
     }
 
-    for (const projectId of eligibleClientProjectIds) {
+    for (const projectId of newEligibleProjectIds) {
       const project = projectMap[projectId];
       if (!project) continue;
       const clientId = project.client_ID;
@@ -173,9 +344,6 @@ class MonthlyInvoiceJob {
         };
       }
     }
-
-    const transporter = this._transporter || this._createTransporter();
-    const sentClients = [];
 
     for (const clientId of Object.keys(clientProjectsData)) {
       const client = clientMap[clientId];
@@ -196,16 +364,18 @@ class MonthlyInvoiceJob {
       const subject = `Monthly Invoice Summary - ${month}/${year}`;
       const text =
         `${client.name},\n\n` +
-        `Summary${month}/${year}:\n\n` +
+        `Find below your monthly invoice summary for ${month}/${year}:\n\n` +
         `${projectLines}\n\n` +
         `Overall Total:\n` +
-        `Hours: ${overallHours.toFixed(2)}\n` +
-        `Cost: ${overallCost.toFixed(2)}\n` +
+        `  Hours: ${overallHours.toFixed(2)}h\n` +
+        `  Cost: €${overallCost.toFixed(2)}\n\n` +
         `Billing Tracker`;
 
       try {
         const invoiceId = cds.utils.uuid();
         const today = now.toISOString().split("T")[0];
+        const invoiceNumber = this._buildInvoiceNumber(clientId, year, month);
+
         const entryIds = [];
         const invoiceLines = [];
         for (const p of projectsData) {
@@ -225,13 +395,14 @@ class MonthlyInvoiceJob {
           }
         }
 
+        // Create invoice and lines and update entries
         await cds.tx(async (tx) => {
           await tx.run(
             INSERT.into(Invoices).entries({
               ID: invoiceId,
-              invoiceNumber: `INV-${clientId.substring(0, 8)}-${year}${String(month).padStart(2, "0")}`,
+              invoiceNumber,
               issueDate: today,
-              status: "S",
+              status: "D",
               currency: "EUR",
               subtotal: overallCost,
               total: overallCost,
@@ -246,13 +417,13 @@ class MonthlyInvoiceJob {
           if (entryIds.length > 0) {
             await tx.run(
               UPDATE(TimeEntries)
-                .set({ billingStatus: "I" })
+                .set({ billingStatus: "B" })
                 .where({ ID: { in: entryIds } }),
             );
           }
         });
 
-        // Email is send after transaction commit to avoid sending emails for failed transactions
+        // Enviar email DESPUÉS del commit
         if (transporter) {
           await transporter.sendMail({
             from: process.env.EMAIL_FROM || "noreply@nubexx.com",
@@ -264,13 +435,30 @@ class MonthlyInvoiceJob {
           log.info(`[Simulated Email] To: ${client.email}\nSubject: ${subject}\n${text}`);
         }
 
+        await cds.tx(async (tx) => {
+          await tx.run(
+            UPDATE(Invoices).set({ status: "S" }).where({ ID: invoiceId }),
+          );
+          if (entryIds.length > 0) {
+            await tx.run(
+              UPDATE(TimeEntries)
+                .set({ billingStatus: "I" })
+                .where({ ID: { in: entryIds } }),
+            );
+          }
+        });
+
         sentClients.push(client.email);
       } catch (err) {
-        log.error(`Failed to process invoice for ${client.email}:`, err);
+        log.error(
+          `Failed to send invoice email for ${client.email}. ` +
+            `Invoice remains in Draft for retry.`,
+          err,
+        );
       }
     }
 
-    return { sent: sentClients.length, clients: sentClients };
+    return sentClients;
   }
 
   _createTransporter() {

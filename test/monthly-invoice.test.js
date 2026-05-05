@@ -65,7 +65,7 @@ describe("MonthlyInvoiceJob", () => {
     await cds.run(
       UPDATE("my.billing.TimeEntries")
         .set({ billingStatus: "U" })
-        .where({ billingStatus: "I" }),
+        .where({ billingStatus: { in: ["B", "I"] } }),
     );
     await cds.run(
       UPDATE("my.billing.Projects")
@@ -127,7 +127,6 @@ describe("MonthlyInvoiceJob", () => {
     expect(call.text).toMatch(/€630\.00/);
   });
 
-  // TEST NUEVO: cubre la corrección de elegibilidad por cliente
   test("does not invoice client when any of their projects has pending entries", async () => {
     await cds.run(
       INSERT.into("my.billing.Projects").entries({
@@ -287,7 +286,7 @@ describe("MonthlyInvoiceJob", () => {
     expect(customSendMail).toHaveBeenCalledTimes(1);
   });
 
-  test("creates invoice and invoice line records", async () => {
+  test("creates invoice in Draft and promotes to Sent after email", async () => {
     await cds.run(
       INSERT.into("my.billing.TimeEntries").entries([
         {
@@ -330,7 +329,99 @@ describe("MonthlyInvoiceJob", () => {
     expect(parseFloat(lines[0].amount)).toBeCloseTo(360, 2);
   });
 
-  test("updates time entry billing status to invoiced", async () => {
+  // Covers the case where email sending fails after invoice creation
+  test("keeps invoice in Draft and hours as Billed when email fails", async () => {
+    sendMailMock.mockRejectedValue(new Error("SMTP error"));
+
+    await cds.run(
+      INSERT.into("my.billing.TimeEntries").entries([
+        {
+          ID: "70000000-0000-0000-0000-000000000100",
+          date: "2026-03-10",
+          hours: 8,
+          description: "Design work",
+          status: "A",
+          rateSnapshot: 45.0,
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+          month: 3,
+          year: 2026,
+          billingStatus: "U",
+        },
+      ]),
+    );
+
+    const job = new MonthlyInvoiceJob();
+    const result = await job.run(new Date("2026-04-01"));
+
+    expect(result.sent).toBe(0);
+    expect(logErrorMock).toHaveBeenCalled();
+
+    const invoice = await cds.run(
+      SELECT.one
+        .from("my.billing.Invoices")
+        .where({ client_ID: CLIENT_1 })
+        .columns("status"),
+    );
+
+    expect(invoice).toBeDefined();
+    expect(invoice.status).toBe("D");
+
+    const entry = await cds.run(
+      SELECT.one
+        .from("my.billing.TimeEntries")
+        .where({ ID: "70000000-0000-0000-0000-000000000100" })
+        .columns("billingStatus"),
+    );
+
+    expect(entry.billingStatus).toBe("B");
+  });
+
+  // TEST NUEVO: cubre el reintento automático
+  test("retries draft invoices on subsequent runs", async () => {
+    const draftInvoiceId = "80000000-0000-0000-0000-000000000001";
+    await cds.run(
+      INSERT.into("my.billing.Invoices").entries({
+        ID: draftInvoiceId,
+        invoiceNumber: `INV-${CLIENT_1.substring(0, 8)}-202603`,
+        issueDate: "2026-04-01",
+        status: "D",
+        currency: "EUR",
+        subtotal: 360,
+        total: 360,
+        client_ID: CLIENT_1,
+      }),
+    );
+
+    await cds.run(
+      INSERT.into("my.billing.InvoiceLines").entries({
+        ID: "90000000-0000-0000-0000-000000000001",
+        invoice_ID: draftInvoiceId,
+        timeEntry_ID: "60000000-0000-0000-0000-000000000001",
+        description: "Prior month entry",
+        hours: 8,
+        rateSnapshot: 45.0,
+        amount: 360,
+      }),
+    );
+
+    const job = new MonthlyInvoiceJob();
+    const result = await job.run(new Date("2026-04-01"));
+
+    expect(result.sent).toBe(1);
+    expect(sendMailMock).toHaveBeenCalledTimes(1);
+
+    const invoice = await cds.run(
+      SELECT.one
+        .from("my.billing.Invoices")
+        .where({ ID: draftInvoiceId })
+        .columns("status"),
+    );
+
+    expect(invoice.status).toBe("S");
+  });
+
+  test("updates time entry billing status to Invoiced after successful email", async () => {
     await cds.run(
       INSERT.into("my.billing.TimeEntries").entries([
         {
@@ -360,6 +451,37 @@ describe("MonthlyInvoiceJob", () => {
     );
 
     expect(entry.billingStatus).toBe("I");
+  });
+
+  // Duplicates prevention test
+  test("does not create duplicate invoice for same client-month", async () => {
+    await cds.run(
+      INSERT.into("my.billing.TimeEntries").entries([
+        {
+          ID: "70000000-0000-0000-0000-000000000100",
+          date: "2026-03-10",
+          hours: 8,
+          description: "Design work",
+          status: "A",
+          rateSnapshot: 45.0,
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+          month: 3,
+          year: 2026,
+          billingStatus: "U",
+        },
+      ]),
+    );
+
+    const job = new MonthlyInvoiceJob();
+    await job.run(new Date("2026-04-01"));
+    await job.run(new Date("2026-04-01"));
+
+    const invoices = await cds.run(
+      SELECT.from("my.billing.Invoices").where({ client_ID: CLIENT_1 }),
+    );
+
+    expect(invoices.length).toBe(1);
   });
 
   test("sends emails to multiple clients with their respective projects", async () => {
