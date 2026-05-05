@@ -54,8 +54,15 @@ class MonthlyInvoiceJob {
   }
 
   async _retryDraftInvoices(year, month, now, transporter, log) {
-    const { Invoices, InvoiceLines, TimeEntries, Projects, Clients } =
-      cds.entities("my.billing");
+    const {
+      Invoices,
+      InvoiceLines,
+      TimeEntries,
+      Projects,
+      Clients,
+      BillingPeriods,
+      Notifications,
+    } = cds.entities("my.billing");
     const sentClients = [];
 
     const invoiceNumberPattern = `%-${year}${String(month).padStart(2, "0")}`;
@@ -180,6 +187,35 @@ class MonthlyInvoiceJob {
                 .where({ ID: { in: invoiceEntryIds } }),
             );
           }
+
+          // Gap 2: mark billing periods as invoiced so re-runs are safe
+          const retryProjectIds = Object.keys(
+            invoiceProjects[invoice.ID] || {},
+          );
+          for (const pid of retryProjectIds) {
+            const existingBp = await tx.run(
+              SELECT.one
+                .from(BillingPeriods)
+                .where({ project_ID: pid, year, month }),
+            );
+            if (existingBp) {
+              await tx.run(
+                UPDATE(BillingPeriods)
+                  .set({ status: "I" })
+                  .where({ ID: existingBp.ID }),
+              );
+            }
+          }
+        });
+
+        // Gap 3: log notification record for invoice retry
+        await INSERT.into(Notifications).entries({
+          client_ID: invoice.client_ID,
+          type: "InvoiceSent",
+          subject,
+          message: text,
+          sentAt: new Date().toISOString(),
+          status: "S",
         });
 
         sentClients.push(client.email);
@@ -195,8 +231,15 @@ class MonthlyInvoiceJob {
   }
 
   async _createNewInvoices(year, month, now, transporter, log) {
-    const { TimeEntries, Projects, Clients, Invoices, InvoiceLines } =
-      cds.entities("my.billing");
+    const {
+      TimeEntries,
+      Projects,
+      Clients,
+      Invoices,
+      InvoiceLines,
+      BillingPeriods,
+      Notifications,
+    } = cds.entities("my.billing");
     const sentClients = [];
 
     // Projects with entries unbilled
@@ -330,6 +373,7 @@ class MonthlyInvoiceJob {
       }
       if (!clientProjectsData[clientId][project.ID]) {
         clientProjectsData[clientId][project.ID] = {
+          projectId: project.ID,
           name: project.name,
           entries: [],
           totalHours: 0,
@@ -353,6 +397,7 @@ class MonthlyInvoiceJob {
       }
       if (!clientProjectsData[clientId][project.ID]) {
         clientProjectsData[clientId][project.ID] = {
+          projectId: project.ID,
           name: project.name,
           entries: [],
           totalHours: 0,
@@ -453,6 +498,7 @@ class MonthlyInvoiceJob {
           );
         }
 
+        // Finalize invoice status, billing periods, and notification log
         await cds.tx(async (tx) => {
           await tx.run(
             UPDATE(Invoices).set({ status: "S" }).where({ ID: invoiceId }),
@@ -464,6 +510,48 @@ class MonthlyInvoiceJob {
                 .where({ ID: { in: entryIds } }),
             );
           }
+
+          // Upsert BillingPeriods for each project in this invoice
+          for (const p of projectsData) {
+            const existingBp = await tx.run(
+              SELECT.one
+                .from(BillingPeriods)
+                .where({ project_ID: p.projectId, year, month }),
+            );
+            if (existingBp) {
+              await tx.run(
+                UPDATE(BillingPeriods)
+                  .set({
+                    status: "I",
+                    totalHours: p.totalHours,
+                    totalCost: p.totalCost,
+                  })
+                  .where({ ID: existingBp.ID }),
+              );
+            } else {
+              await tx.run(
+                INSERT.into(BillingPeriods).entries({
+                  ID: cds.utils.uuid(),
+                  project_ID: p.projectId,
+                  year,
+                  month,
+                  status: "I",
+                  totalHours: p.totalHours,
+                  totalCost: p.totalCost,
+                }),
+              );
+            }
+          }
+        });
+
+        // Gap 3: log notification record for new invoice
+        await INSERT.into(Notifications).entries({
+          client_ID: clientId,
+          type: "InvoiceSent",
+          subject,
+          message: text,
+          sentAt: new Date().toISOString(),
+          status: "S",
         });
 
         sentClients.push(client.email);

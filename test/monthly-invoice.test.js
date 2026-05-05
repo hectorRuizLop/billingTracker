@@ -77,6 +77,17 @@ describe("MonthlyInvoiceJob", () => {
         ID: SECOND_PROJECT_ID,
       }),
     );
+    await cds.run(
+      DELETE.from("my.billing.BillingPeriods").where({
+        year: 2026,
+        month: 3,
+      }),
+    );
+    await cds.run(
+      DELETE.from("my.billing.Notifications").where({
+        type: "InvoiceSent",
+      }),
+    );
   });
 
   test("sends invoice email to client with approved hours breakdown", async () => {
@@ -588,5 +599,75 @@ describe("MonthlyInvoiceJob", () => {
     expect(call.text).toMatch(/Customer Portal/);
     expect(call.text).toMatch(/0\.00h/);
     expect(call.text).toMatch(/€0\.00/);
+  });
+
+  // Gap 2: BillingPeriods are populated after successful invoice
+  test("creates BillingPeriods with Invoiced status after sending invoice", async () => {
+    await cds.run(
+      INSERT.into("my.billing.TimeEntries").entries([
+        {
+          ID: "70000000-0000-0000-0000-000000000100",
+          date: "2026-03-10",
+          hours: 8,
+          description: "Design work",
+          status: "A",
+          rateSnapshot: 45.0,
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+          month: 3,
+          year: 2026,
+          billingStatus: "U",
+        },
+      ]),
+    );
+
+    const job = new MonthlyInvoiceJob();
+    await job.run(new Date("2026-04-01"));
+
+    const bp = await cds.run(
+      SELECT.one
+        .from("my.billing.BillingPeriods")
+        .where({ project_ID: PROJECT_CP, year: 2026, month: 3 }),
+    );
+
+    expect(bp).toBeDefined();
+    expect(bp.status).toBe("I");
+    expect(parseFloat(bp.totalHours)).toBeCloseTo(8, 2);
+    expect(parseFloat(bp.totalCost)).toBeCloseTo(360, 2);
+  });
+
+  // Gap 3: Notifications row is created for each invoice sent
+  test("inserts InvoiceSent notification after successful email", async () => {
+    await cds.run(
+      INSERT.into("my.billing.TimeEntries").entries([
+        {
+          ID: "70000000-0000-0000-0000-000000000100",
+          date: "2026-03-10",
+          hours: 8,
+          description: "Design work",
+          status: "A",
+          rateSnapshot: 45.0,
+          employee_ID: EMP1_ID,
+          project_ID: PROJECT_CP,
+          month: 3,
+          year: 2026,
+          billingStatus: "U",
+        },
+      ]),
+    );
+
+    const job = new MonthlyInvoiceJob();
+    await job.run(new Date("2026-04-01"));
+
+    const notifications = await cds.run(
+      SELECT.from("my.billing.Notifications").where({
+        type: "InvoiceSent",
+        client_ID: CLIENT_1,
+      }),
+    );
+
+    expect(notifications.length).toBeGreaterThanOrEqual(1);
+    expect(notifications[0].status).toBe("S");
+    expect(notifications[0].subject).toMatch(/Monthly Invoice Summary/);
   });
 });
