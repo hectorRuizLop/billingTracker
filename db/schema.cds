@@ -209,7 +209,8 @@ entity InvoiceLines : cuid {
 }
 
 entity Notifications : cuid, managed {
-  recipient : Association to Employees @mandatory;
+  recipient : Association to Employees;
+  client    : Association to Clients;
   type      : String(50) default 'DraftReminder';
   subject   : String(200);
   message   : String(1000);
