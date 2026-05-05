@@ -62,6 +62,13 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
   }]
   entity ProjectAssignments as projection on db.ProjectAssignments;
 
+  // Managers can read billing periods for projects they manage
+  @restrict: [{
+    grant: 'READ',
+    where: 'project.manager.externalId = $user'
+  }]
+  entity BillingPeriods as projection on db.BillingPeriods;
+
   action approveTimeEntry(timeEntryId: UUID)                       returns String;
   action rejectTimeEntry(timeEntryId: UUID, rejectionNote: String) returns String;
 

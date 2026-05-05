@@ -76,6 +76,7 @@ class PendingHoursReminder {
 
     const transporter = this._transporter || this._createTransporter();
     const sentManagers = [];
+    const { Notifications } = cds.entities("my.billing");
 
     for (const data of Object.values(summary)) {
       const manager = data.manager;
@@ -86,11 +87,23 @@ class PendingHoursReminder {
         )
         .join("\n");
 
+      const subject = `Pending Time Entries for Review - ${month}/${year}`;
+      const text = `Hello ${manager.firstName || "Manager"},\n\nYou have pending time entries awaiting your review from ${month}/${year}:\n\n${projectSummaries}\n\nPlease review and approve or reject them at your earliest convenience.\n\nBest regards,\nBilling Tracker`;
+
       await transporter.sendMail({
         from: process.env.EMAIL_FROM || "noreply@nubexx.com",
         to: manager.email,
-        subject: `Pending Time Entries for Review - ${month}/${year}`,
-        text: `Hello ${manager.firstName || "Manager"},\n\nYou have pending time entries awaiting your review from ${month}/${year}:\n\n${projectSummaries}\n\nPlease review and approve or reject them at your earliest convenience.\n\nBest regards,\nBilling Tracker`,
+        subject,
+        text,
+      });
+
+      await INSERT.into(Notifications).entries({
+        recipient_ID: manager.ID,
+        type: "PendingHoursReminder",
+        subject,
+        message: text,
+        sentAt: new Date().toISOString(),
+        status: "S",
       });
 
       sentManagers.push(manager.email);

@@ -162,4 +162,25 @@ describe("PendingHoursReminder", () => {
       }),
     );
   });
+
+  test("inserts notification records for each manager reminded", async () => {
+    const reminder = new PendingHoursReminder();
+    await reminder.run(new Date("2026-05-01"));
+
+    const notifications = await cds.run(
+      SELECT.from("my.billing.Notifications").where({
+        type: "PendingHoursReminder",
+      }),
+    );
+
+    expect(notifications.length).toBeGreaterThanOrEqual(2);
+    expect(notifications[0].status).toBe("S");
+    expect(notifications[0].subject).toMatch(/Pending Time Entries/);
+
+    await cds.run(
+      DELETE.from("my.billing.Notifications").where({
+        type: "PendingHoursReminder",
+      }),
+    );
+  });
 });

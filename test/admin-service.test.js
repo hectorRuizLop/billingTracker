@@ -176,4 +176,15 @@ describe("AdminService", () => {
     expect(status).toBe(400);
     expect(data.error.message).toMatch(/draft/i);
   });
+
+  test("Admin can access Invoices, InvoiceLines and BillingPeriods", async () => {
+    const invoices = await GET(`${BASE}/Invoices`, { auth: ADMIN });
+    expect(invoices.status).toBe(200);
+
+    const lines = await GET(`${BASE}/InvoiceLines`, { auth: ADMIN });
+    expect(lines.status).toBe(200);
+
+    const periods = await GET(`${BASE}/BillingPeriods`, { auth: ADMIN });
+    expect(periods.status).toBe(200);
+  });
 });
