@@ -32,13 +32,21 @@ class MonthlyInvoiceJob {
 
     // Re try sending draft invoices first
     const retried = await this._retryDraftInvoices(
-      year, month, now, transporter, log,
+      year,
+      month,
+      now,
+      transporter,
+      log,
     );
     sentClients.push(...retried);
 
     // Create new invoices for eligible clients and send
     const newlySent = await this._createNewInvoices(
-      year, month, now, transporter, log,
+      year,
+      month,
+      now,
+      transporter,
+      log,
     );
     sentClients.push(...newlySent);
 
@@ -66,8 +74,12 @@ class MonthlyInvoiceJob {
     const lines = await SELECT.from(InvoiceLines)
       .where({ invoice_ID: { in: invoiceIds } })
       .columns(
-        "invoice_ID", "timeEntry_ID", "hours",
-        "rateSnapshot", "amount", "description",
+        "invoice_ID",
+        "timeEntry_ID",
+        "hours",
+        "rateSnapshot",
+        "amount",
+        "description",
       );
 
     const entryIds = [...new Set(lines.map((l) => l.timeEntry_ID))];
@@ -102,7 +114,9 @@ class MonthlyInvoiceJob {
       }
       if (!invoiceProjects[line.invoice_ID][project.ID]) {
         invoiceProjects[line.invoice_ID][project.ID] = {
-          name: project.name, totalHours: 0, totalCost: 0,
+          name: project.name,
+          totalHours: 0,
+          totalCost: 0,
         };
       }
       const hours = parseFloat(entry.hours);
@@ -146,7 +160,9 @@ class MonthlyInvoiceJob {
             text,
           });
         } else {
-          log.info(`[Simulated Email] To: ${client.email}\nSubject: ${subject}\n${text}`);
+          log.info(
+            `[Simulated Email] To: ${client.email}\nSubject: ${subject}\n${text}`,
+          );
         }
 
         const invoiceEntryIds = lines
@@ -252,7 +268,7 @@ class MonthlyInvoiceJob {
 
     if (eligibleClientIds.length === 0) return sentClients;
 
-    // Clients that already have an invoice excluded 
+    // Clients that already have an invoice excluded
     const existingInvoices = await SELECT.from(Invoices)
       .where({
         client_ID: { in: eligibleClientIds },
@@ -432,7 +448,9 @@ class MonthlyInvoiceJob {
             text,
           });
         } else {
-          log.info(`[Simulated Email] To: ${client.email}\nSubject: ${subject}\n${text}`);
+          log.info(
+            `[Simulated Email] To: ${client.email}\nSubject: ${subject}\n${text}`,
+          );
         }
 
         await cds.tx(async (tx) => {
