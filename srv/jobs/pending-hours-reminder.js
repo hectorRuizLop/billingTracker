@@ -1,12 +1,12 @@
 "use strict";
 
 const cds = require("@sap/cds");
-const nodemailer = require("nodemailer");
 const cron = require("node-cron");
+const { EmailSender } = require("../handlers/shared/email-sender");
 
 class PendingHoursReminder {
   constructor(options = {}) {
-    this._transporter = options.transporter;
+    this._emailSender = options.emailSender || new EmailSender();
     this._cronExpression = options.cronExpression || "0 9 1 * *";
   }
 
@@ -74,7 +74,6 @@ class PendingHoursReminder {
       summary[managerId].projects[project.ID].count++;
     }
 
-    const transporter = this._transporter || this._createTransporter();
     const sentManagers = [];
     const { Notifications } = cds.entities("my.billing");
 
@@ -90,9 +89,9 @@ class PendingHoursReminder {
       const subject = `Pending Time Entries for Review - ${month}/${year}`;
       const text = `Hello ${manager.firstName || "Manager"},\n\nYou have pending time entries awaiting your review from ${month}/${year}:\n\n${projectSummaries}\n\nPlease review and approve or reject them at your earliest convenience.\n\nBest regards,\nBilling Tracker`;
 
-      await transporter.sendMail({
-        from: process.env.EMAIL_FROM || "noreply@nubexx.com",
+      await this._emailSender.send({
         to: manager.email,
+        from: process.env.EMAIL_FROM || "noreply@nubexx.com",
         subject,
         text,
       });
@@ -110,20 +109,6 @@ class PendingHoursReminder {
     }
 
     return { sent: sentManagers.length, managers: sentManagers };
-  }
-
-  _createTransporter() {
-    return nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT
-        ? parseInt(process.env.SMTP_PORT, 10)
-        : undefined,
-      secure: process.env.SMTP_SECURE === "true",
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
   }
 
   start() {
