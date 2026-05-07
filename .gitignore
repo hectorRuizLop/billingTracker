@@ -20,3 +20,6 @@ mta_archives/
 
 # @cap-js/cds-typer
 @cds-models
+
+# Environment variables (secrets)
+.env
