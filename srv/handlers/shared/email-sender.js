@@ -17,11 +17,15 @@ class EmailSender {
     secret = process.env.SENDPULSE_SECRET,
     tokenStorage = process.env.SENDPULSE_TOKEN_STORAGE ||
       "/tmp/sendpulse-token.json",
+    fromName = "Billing Tracker",
   } = {}) {
     this._userId = userId;
     this._secret = secret;
     this._tokenStorage = tokenStorage;
+    this._fromName = fromName;
     this._token = null;
+    // Track expiry in-memory so we can proactively refresh before the next send
+    this._tokenExpiresAt = null;
   }
 
   _loadCachedToken() {
@@ -29,26 +33,36 @@ class EmailSender {
       if (fs.existsSync(this._tokenStorage)) {
         const raw = fs.readFileSync(this._tokenStorage, "utf8");
         const data = JSON.parse(raw);
-        if (data.expires_at && new Date(data.expires_at) > new Date()) {
+        const expiresAt = data.expires_at ? new Date(data.expires_at) : null;
+        if (expiresAt && expiresAt > new Date()) {
           this._token = data.access_token;
+          // Mirror expiry in-memory so _ensureToken can re-check it without
+          // hitting the filesystem on every call
+          this._tokenExpiresAt = expiresAt;
           return true;
         }
       }
     } catch {
-      // ignore corrupt cache
+      // ignore corrupt / missing cache file
     }
     return false;
   }
 
   _saveToken(data) {
     try {
+      const expiresAt = new Date(Date.now() + data.expires_in * 1000);
       const payload = {
         access_token: data.access_token,
-        expires_at: new Date(Date.now() + data.expires_in * 1000).toISOString(),
+        expires_at: expiresAt.toISOString(),
       };
-      fs.writeFileSync(this._tokenStorage, JSON.stringify(payload, null, 2));
+      // Write to a temp file first, then rename so concurrent readers never
+      // see a half-written JSON blob (atomic on most POSIX filesystems)
+      const tmp = `${this._tokenStorage}.tmp`;
+      fs.writeFileSync(tmp, JSON.stringify(payload, null, 2));
+      fs.renameSync(tmp, this._tokenStorage);
+      this._tokenExpiresAt = expiresAt;
     } catch {
-      // ignore write failures (e.g. read-only fs)
+      // ignore write failures (e.g. read-only fs on BTP)
     }
   }
 
@@ -80,7 +94,13 @@ class EmailSender {
   }
 
   async _ensureToken() {
-    if (this._token) return this._token;
+    // Re-check in-memory expiry on every call so a long-running process
+    // proactively refreshes before the token actually expires at the API
+    if (this._token && this._tokenExpiresAt && this._tokenExpiresAt > new Date()) {
+      return this._token;
+    }
+    // In-memory token is gone or expired — try the disk cache next
+    this._token = null;
     if (this._loadCachedToken()) return this._token;
     return this._fetchToken();
   }
@@ -98,7 +118,9 @@ class EmailSender {
       email: {
         subject,
         text,
-        from: { name: from, email: from },
+        // Use the human-readable sender name, not the raw email address,
+        // so mail clients display "Billing Tracker" instead of the address string
+        from: { name: this._fromName, email: from },
         to: [{ name: to, email: to }],
       },
     };
@@ -114,6 +136,13 @@ class EmailSender {
 
     if (!res.ok) {
       const body = await res.text();
+      // 401 means our cached token was revoked/expired; clear it so the next
+      // call triggers a fresh _fetchToken() instead of failing immediately again
+      if (res.status === 401) {
+        this._token = null;
+        this._tokenExpiresAt = null;
+        try { fs.rmSync(this._tokenStorage, { force: true }); } catch { /* ignore */ }
+      }
       throw new Error(`SendPulse send failed (${res.status}): ${body}`);
     }
 
