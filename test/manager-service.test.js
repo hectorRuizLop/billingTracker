@@ -410,7 +410,7 @@ describe("ManagerService", () => {
     await cds.run(DELETE.from("my.billing.Projects").where({ ID: project.ID }));
   });
   test("MGR1 cannot update a Time Entry directly", async () => {
-    const { status, data } = await PATCH(
+    const { status } = await PATCH(
       `/api/manager/TimeEntries/${TIME_ENTRY_SUBMITTED_EMP1}`,
       { hours: 10 },
       { auth: MGR1, validateStatus: () => true },

@@ -11,23 +11,15 @@ const {
 } = require("./helpers");
 const { MonthlyInvoiceJob } = require("../srv/jobs/monthly-invoice");
 
-jest.mock("nodemailer");
-const nodemailer = require("nodemailer");
-
 describe("MonthlyInvoiceJob", () => {
-  let sendMailMock;
-  let createTransportMock;
+  let sendMock;
   let logInfoMock;
   let logErrorMock;
 
   const SECOND_PROJECT_ID = "40000000-0000-0000-0000-000000000099";
 
   beforeEach(() => {
-    sendMailMock = jest.fn().mockResolvedValue({ messageId: "test" });
-    createTransportMock = jest.fn().mockReturnValue({
-      sendMail: sendMailMock,
-    });
-    nodemailer.createTransport = createTransportMock;
+    sendMock = jest.fn().mockResolvedValue({ sent: true });
 
     logInfoMock = jest.fn();
     logErrorMock = jest.fn();
@@ -122,14 +114,14 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob();
+    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
     const result = await job.run(new Date("2026-04-01"));
 
     expect(result.sent).toBe(1);
     expect(result.clients).toContain("contacto@techcorp.mx");
-    expect(sendMailMock).toHaveBeenCalledTimes(1);
+    expect(sendMock).toHaveBeenCalledTimes(1);
 
-    const call = sendMailMock.mock.calls[0][0];
+    const call = sendMock.mock.calls[0][0];
     expect(call.to).toBe("contacto@techcorp.mx");
     expect(call.subject).toBe("Monthly Invoice Summary - 3/2026");
     expect(call.text).toMatch(/TechCorp SA de CV/);
@@ -185,7 +177,7 @@ describe("MonthlyInvoiceJob", () => {
     const result = await job.run(new Date("2026-04-01"));
 
     expect(result.sent).toBe(0);
-    expect(sendMailMock).not.toHaveBeenCalled();
+    expect(sendMock).not.toHaveBeenCalled();
   });
 
   test("skips projects with pending draft or submitted entries", async () => {
@@ -224,7 +216,7 @@ describe("MonthlyInvoiceJob", () => {
     const result = await job.run(new Date("2026-04-01"));
 
     expect(result.sent).toBe(0);
-    expect(sendMailMock).not.toHaveBeenCalled();
+    expect(sendMock).not.toHaveBeenCalled();
   });
 
   test("includes closed projects even with pending entries logic", async () => {
@@ -252,11 +244,11 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob();
+    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
     const result = await job.run(new Date("2026-04-01"));
 
     expect(result.sent).toBe(1);
-    expect(sendMailMock).toHaveBeenCalledTimes(1);
+    expect(sendMock).toHaveBeenCalledTimes(1);
   });
 
   test("returns empty when no unbilled entries exist for previous month", async () => {
@@ -265,12 +257,11 @@ describe("MonthlyInvoiceJob", () => {
 
     expect(result.sent).toBe(0);
     expect(result.clients).toEqual([]);
-    expect(sendMailMock).not.toHaveBeenCalled();
+    expect(sendMock).not.toHaveBeenCalled();
   });
 
-  test("uses provided transporter instead of creating one", async () => {
-    const customSendMail = jest.fn().mockResolvedValue({ messageId: "custom" });
-    const customTransporter = { sendMail: customSendMail };
+  test("uses provided emailSender instead of creating one", async () => {
+    const customSend = jest.fn().mockResolvedValue({ sent: true });
 
     await cds.run(
       INSERT.into("my.billing.TimeEntries").entries([
@@ -290,11 +281,10 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob({ transporter: customTransporter });
+    const job = new MonthlyInvoiceJob({ emailSender: { send: customSend } });
     await job.run(new Date("2026-04-01"));
 
-    expect(createTransportMock).not.toHaveBeenCalled();
-    expect(customSendMail).toHaveBeenCalledTimes(1);
+    expect(customSend).toHaveBeenCalledTimes(1);
   });
 
   test("creates invoice in Draft and promotes to Sent after email", async () => {
@@ -316,7 +306,7 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob();
+    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
     await job.run(new Date("2026-04-01"));
 
     const invoices = await cds.run(
@@ -342,7 +332,7 @@ describe("MonthlyInvoiceJob", () => {
 
   // Covers the case where email sending fails after invoice creation
   test("keeps invoice in Draft and hours as Billed when email fails", async () => {
-    sendMailMock.mockRejectedValue(new Error("SMTP error"));
+    sendMock.mockRejectedValue(new Error("SendGrid error"));
 
     await cds.run(
       INSERT.into("my.billing.TimeEntries").entries([
@@ -362,7 +352,7 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob();
+    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
     const result = await job.run(new Date("2026-04-01"));
 
     expect(result.sent).toBe(0);
@@ -416,11 +406,11 @@ describe("MonthlyInvoiceJob", () => {
       }),
     );
 
-    const job = new MonthlyInvoiceJob();
+    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
     const result = await job.run(new Date("2026-04-01"));
 
     expect(result.sent).toBe(1);
-    expect(sendMailMock).toHaveBeenCalledTimes(1);
+    expect(sendMock).toHaveBeenCalledTimes(1);
 
     const invoice = await cds.run(
       SELECT.one
@@ -451,7 +441,7 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob();
+    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
     await job.run(new Date("2026-04-01"));
 
     const entry = await cds.run(
@@ -484,7 +474,7 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob();
+    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
     await job.run(new Date("2026-04-01"));
     await job.run(new Date("2026-04-01"));
 
@@ -527,17 +517,17 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob();
+    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
     const result = await job.run(new Date("2026-04-01"));
 
     expect(result.sent).toBe(2);
 
-    const techCorpCall = sendMailMock.mock.calls.find(
+    const techCorpCall = sendMock.mock.calls.find(
       (call) => call[0].to === "contacto@techcorp.mx",
     );
     expect(techCorpCall[0].text).toMatch(/Customer Portal/);
 
-    const dataSoftCall = sendMailMock.mock.calls.find(
+    const dataSoftCall = sendMock.mock.calls.find(
       (call) => call[0].to === "info@datasoft.io",
     );
     expect(dataSoftCall[0].text).toMatch(/Sales Mobile App/);
@@ -562,12 +552,12 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob();
+    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
     const result = await job.run(new Date("2026-01-01"));
 
     expect(result.sent).toBe(1);
 
-    const call = sendMailMock.mock.calls[0][0];
+    const call = sendMock.mock.calls[0][0];
     expect(call.subject).toBe("Monthly Invoice Summary - 12/2025");
   });
 
@@ -590,12 +580,12 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob();
+    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
     const result = await job.run(new Date("2026-04-01"));
 
     expect(result.sent).toBe(1);
 
-    const call = sendMailMock.mock.calls[0][0];
+    const call = sendMock.mock.calls[0][0];
     expect(call.text).toMatch(/Customer Portal/);
     expect(call.text).toMatch(/0\.00h/);
     expect(call.text).toMatch(/€0\.00/);
@@ -621,7 +611,7 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob();
+    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
     await job.run(new Date("2026-04-01"));
 
     const bp = await cds.run(
@@ -656,7 +646,7 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob();
+    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
     await job.run(new Date("2026-04-01"));
 
     const notifications = await cds.run(
