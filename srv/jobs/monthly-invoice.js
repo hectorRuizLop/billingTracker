@@ -1,12 +1,12 @@
 "use strict";
 
 const cds = require("@sap/cds");
-const nodemailer = require("nodemailer");
 const cron = require("node-cron");
+const { EmailSender } = require("../handlers/shared/email-sender");
 
 class MonthlyInvoiceJob {
   constructor(options = {}) {
-    this._transporter = options.transporter;
+    this._emailSender = options.emailSender || new EmailSender();
     this._cronExpression = options.cronExpression || "0 9 2 * *";
   }
 
@@ -27,33 +27,20 @@ class MonthlyInvoiceJob {
   async run(now = new Date()) {
     const { year, month } = this._getPreviousMonth(now);
     const log = cds.log("monthly-invoice");
-    const transporter = this._transporter || this._createTransporter();
     const sentClients = [];
 
     // Re try sending draft invoices first
-    const retried = await this._retryDraftInvoices(
-      year,
-      month,
-      now,
-      transporter,
-      log,
-    );
+    const retried = await this._retryDraftInvoices(year, month, now, log);
     sentClients.push(...retried);
 
     // Create new invoices for eligible clients and send
-    const newlySent = await this._createNewInvoices(
-      year,
-      month,
-      now,
-      transporter,
-      log,
-    );
+    const newlySent = await this._createNewInvoices(year, month, now, log);
     sentClients.push(...newlySent);
 
     return { sent: sentClients.length, clients: sentClients };
   }
 
-  async _retryDraftInvoices(year, month, now, transporter, log) {
+  async _retryDraftInvoices(year, month, now, log) {
     const {
       Invoices,
       InvoiceLines,
@@ -159,18 +146,12 @@ class MonthlyInvoiceJob {
         `Best regards,\nBilling Tracker`;
 
       try {
-        if (transporter) {
-          await transporter.sendMail({
-            from: process.env.EMAIL_FROM || "noreply@nubexx.com",
-            to: client.email,
-            subject,
-            text,
-          });
-        } else {
-          log.info(
-            `[Simulated Email] To: ${client.email}\nSubject: ${subject}\n${text}`,
-          );
-        }
+        await this._emailSender.send({
+          to: client.email,
+          from: process.env.EMAIL_FROM || "noreply@nubexx.com",
+          subject,
+          text,
+        });
 
         const invoiceEntryIds = lines
           .filter((l) => l.invoice_ID === invoice.ID)
@@ -230,7 +211,7 @@ class MonthlyInvoiceJob {
     return sentClients;
   }
 
-  async _createNewInvoices(year, month, now, transporter, log) {
+  async _createNewInvoices(year, month, now, log) {
     const {
       TimeEntries,
       Projects,
@@ -485,18 +466,12 @@ class MonthlyInvoiceJob {
         });
 
         // Enviar email DESPUÉS del commit
-        if (transporter) {
-          await transporter.sendMail({
-            from: process.env.EMAIL_FROM || "noreply@nubexx.com",
-            to: client.email,
-            subject,
-            text,
-          });
-        } else {
-          log.info(
-            `[Simulated Email] To: ${client.email}\nSubject: ${subject}\n${text}`,
-          );
-        }
+        await this._emailSender.send({
+          to: client.email,
+          from: process.env.EMAIL_FROM || "noreply@nubexx.com",
+          subject,
+          text,
+        });
 
         // Finalize invoice status, billing periods, and notification log
         await cds.tx(async (tx) => {
@@ -565,20 +540,6 @@ class MonthlyInvoiceJob {
     }
 
     return sentClients;
-  }
-
-  _createTransporter() {
-    return nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT
-        ? parseInt(process.env.SMTP_PORT, 10)
-        : undefined,
-      secure: process.env.SMTP_SECURE === "true",
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
   }
 
   start() {

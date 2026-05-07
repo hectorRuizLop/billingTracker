@@ -6,8 +6,7 @@
     "@cap-js/hana": "^2",
     "@sap/cds": "^9",
     "@sap/xssec": "^4",
-    "node-cron": "^4.2.1",
-    "nodemailer": "^8.0.7"
+    "node-cron": "^4.2.1"
   },
   "devDependencies": {
     "@cap-js/cds-test": "^0.4.1",

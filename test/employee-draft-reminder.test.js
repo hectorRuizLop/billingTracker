@@ -25,45 +25,52 @@ describe("EmployeeDraftReminder", () => {
   });
 
   test("sends reminder to employees with draft time entries for current month", async () => {
-    const reminder = new EmployeeDraftReminder();
+    const sendMock = jest.fn().mockResolvedValue({ simulated: true });
+    const reminder = new EmployeeDraftReminder({
+      emailSender: { send: sendMock },
+    });
 
     const result = await reminder.run(new Date("2026-04-25"));
 
     expect(result.sent).toBe(1);
     expect(result.employees).toContain("minerva.jimenez@nubexx.com");
-    expect(logInfoMock).toHaveBeenCalledTimes(1);
-    expect(logInfoMock.mock.calls[0][0]).toMatch(/minerva.jimenez@nubexx.com/);
+    expect(sendMock).toHaveBeenCalledTimes(1);
+    expect(sendMock.mock.calls[0][0].to).toBe("minerva.jimenez@nubexx.com");
   });
 
   test("returns empty result when no draft entries exist for current month", async () => {
-    const reminder = new EmployeeDraftReminder();
+    const sendMock = jest.fn().mockResolvedValue({ simulated: true });
+    const reminder = new EmployeeDraftReminder({
+      emailSender: { send: sendMock },
+    });
 
     const result = await reminder.run(new Date("2026-05-25"));
 
     expect(result.sent).toBe(0);
     expect(result.employees).toEqual([]);
-    expect(logInfoMock).not.toHaveBeenCalled();
+    expect(sendMock).not.toHaveBeenCalled();
   });
 
-  test("uses provided transporter instead of logging to console", async () => {
-    const sendMailMock = jest.fn().mockResolvedValue({ messageId: "test" });
-    const customTransporter = { sendMail: sendMailMock };
+  test("uses provided emailSender instead of simulated logging", async () => {
+    const sendMock = jest.fn().mockResolvedValue({ sent: true });
 
     const reminder = new EmployeeDraftReminder({
-      transporter: customTransporter,
+      emailSender: { send: sendMock },
     });
     await reminder.run(new Date("2026-04-25"));
 
-    expect(sendMailMock).toHaveBeenCalledTimes(1);
-    expect(sendMailMock.mock.calls[0][0].to).toBe("minerva.jimenez@nubexx.com");
-    expect(sendMailMock.mock.calls[0][0].subject).toBe(
+    expect(sendMock).toHaveBeenCalledTimes(1);
+    expect(sendMock.mock.calls[0][0].to).toBe("minerva.jimenez@nubexx.com");
+    expect(sendMock.mock.calls[0][0].subject).toBe(
       "Reminder: Finalize Your Timesheet - 4/2026",
     );
-    expect(logInfoMock).not.toHaveBeenCalled();
   });
 
   test("inserts notification records for each employee reminded", async () => {
-    const reminder = new EmployeeDraftReminder();
+    const sendMock = jest.fn().mockResolvedValue({ simulated: true });
+    const reminder = new EmployeeDraftReminder({
+      emailSender: { send: sendMock },
+    });
 
     await reminder.run(new Date("2026-04-25"));
 
@@ -107,13 +114,14 @@ describe("EmployeeDraftReminder", () => {
       ]),
     );
 
-    const reminder = new EmployeeDraftReminder();
+    const sendMock = jest.fn().mockResolvedValue({ simulated: true });
+    const reminder = new EmployeeDraftReminder({
+      emailSender: { send: sendMock },
+    });
     const result = await reminder.run(new Date("2026-04-25"));
 
     expect(result.sent).toBe(1);
-
-    const logCall = logInfoMock.mock.calls[0][0];
-    expect(logCall).toMatch(/2 draft time entries/);
+    expect(sendMock.mock.calls[0][0].text).toMatch(/2 draft time entries/);
 
     await cds.run(
       DELETE.from("my.billing.TimeEntries").where({
@@ -128,7 +136,10 @@ describe("EmployeeDraftReminder", () => {
   });
 
   test("does not remind employees with only submitted or approved entries", async () => {
-    const reminder = new EmployeeDraftReminder();
+    const sendMock = jest.fn().mockResolvedValue({ simulated: true });
+    const reminder = new EmployeeDraftReminder({
+      emailSender: { send: sendMock },
+    });
 
     const result = await reminder.run(new Date("2026-04-25"));
 

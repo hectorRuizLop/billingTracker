@@ -1,12 +1,12 @@
 "use strict";
 
 const cds = require("@sap/cds");
-const nodemailer = require("nodemailer");
 const cron = require("node-cron");
+const { EmailSender } = require("../handlers/shared/email-sender");
 
 class PendingHoursReminder {
   constructor(options = {}) {
-    this._transporter = options.transporter;
+    this._emailSender = options.emailSender || new EmailSender();
     this._cronExpression = options.cronExpression || "0 9 1 * *";
   }
 
@@ -74,7 +74,6 @@ class PendingHoursReminder {
       summary[managerId].projects[project.ID].count++;
     }
 
-    const transporter = this._transporter || this._createTransporter();
     const sentManagers = [];
     const { Notifications } = cds.entities("my.billing");
 
@@ -90,40 +89,33 @@ class PendingHoursReminder {
       const subject = `Pending Time Entries for Review - ${month}/${year}`;
       const text = `Hello ${manager.firstName || "Manager"},\n\nYou have pending time entries awaiting your review from ${month}/${year}:\n\n${projectSummaries}\n\nPlease review and approve or reject them at your earliest convenience.\n\nBest regards,\nBilling Tracker`;
 
-      await transporter.sendMail({
-        from: process.env.EMAIL_FROM || "noreply@nubexx.com",
-        to: manager.email,
-        subject,
-        text,
-      });
+      try {
+        await this._emailSender.send({
+          to: manager.email,
+          from: process.env.EMAIL_FROM || "noreply@nubexx.com",
+          subject,
+          text,
+        });
 
-      await INSERT.into(Notifications).entries({
-        recipient_ID: manager.ID,
-        type: "PendingHoursReminder",
-        subject,
-        message: text,
-        sentAt: new Date().toISOString(),
-        status: "S",
-      });
+        // Only persist the notification record when the email actually succeeded;
+        // if send() throws we skip this so the DB stays in sync with reality
+        await INSERT.into(Notifications).entries({
+          recipient_ID: manager.ID,
+          type: "PendingHoursReminder",
+          subject,
+          message: text,
+          sentAt: new Date().toISOString(),
+          status: "S",
+        });
 
-      sentManagers.push(manager.email);
+        sentManagers.push(manager.email);
+      } catch (err) {
+        // Log and continue — one bad email should not abort the rest of the loop
+        cds.log("pending-hours-reminder").error(`Failed to notify ${manager.email}`, err);
+      }
     }
 
     return { sent: sentManagers.length, managers: sentManagers };
-  }
-
-  _createTransporter() {
-    return nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT
-        ? parseInt(process.env.SMTP_PORT, 10)
-        : undefined,
-      secure: process.env.SMTP_SECURE === "true",
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
   }
 
   start() {

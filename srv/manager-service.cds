@@ -67,7 +67,7 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
     grant: 'READ',
     where: 'project.manager.externalId = $user'
   }]
-  entity BillingPeriods as projection on db.BillingPeriods;
+  entity BillingPeriods     as projection on db.BillingPeriods;
 
   action approveTimeEntry(timeEntryId: UUID)                       returns String;
   action rejectTimeEntry(timeEntryId: UUID, rejectionNote: String) returns String;

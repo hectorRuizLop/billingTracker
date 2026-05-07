@@ -3,19 +3,11 @@
 const { cds, EMP1_ID, PROJECT_CP, PROJECT_MOBILE } = require("./helpers");
 const { PendingHoursReminder } = require("../srv/jobs/pending-hours-reminder");
 
-jest.mock("nodemailer");
-const nodemailer = require("nodemailer");
-
 describe("PendingHoursReminder", () => {
-  let sendMailMock;
-  let createTransportMock;
+  let sendMock;
 
   beforeEach(() => {
-    sendMailMock = jest.fn().mockResolvedValue({ messageId: "test" });
-    createTransportMock = jest.fn().mockReturnValue({
-      sendMail: sendMailMock,
-    });
-    nodemailer.createTransport = createTransportMock;
+    sendMock = jest.fn().mockResolvedValue({ sent: true });
   });
 
   afterEach(() => {
@@ -23,7 +15,9 @@ describe("PendingHoursReminder", () => {
   });
 
   test("sends email summaries to managers with submitted time entries from previous month", async () => {
-    const reminder = new PendingHoursReminder();
+    const reminder = new PendingHoursReminder({
+      emailSender: { send: sendMock },
+    });
 
     const result = await reminder.run(new Date("2026-05-01"));
 
@@ -31,9 +25,9 @@ describe("PendingHoursReminder", () => {
     expect(result.managers).toContain("alejandro.martinez@nubexx.com");
     expect(result.managers).toContain("alejandro.lopez@nubexx.com");
 
-    expect(sendMailMock).toHaveBeenCalledTimes(2);
+    expect(sendMock).toHaveBeenCalledTimes(2);
 
-    const mgr1Call = sendMailMock.mock.calls.find(
+    const mgr1Call = sendMock.mock.calls.find(
       (call) => call[0].to === "alejandro.martinez@nubexx.com",
     );
     expect(mgr1Call[0].subject).toBe(
@@ -42,7 +36,7 @@ describe("PendingHoursReminder", () => {
     expect(mgr1Call[0].text).toMatch(/Customer Portal/);
     expect(mgr1Call[0].text).toMatch(/2 submitted time entries/);
 
-    const mgr2Call = sendMailMock.mock.calls.find(
+    const mgr2Call = sendMock.mock.calls.find(
       (call) => call[0].to === "alejandro.lopez@nubexx.com",
     );
     expect(mgr2Call[0].subject).toBe(
@@ -59,20 +53,18 @@ describe("PendingHoursReminder", () => {
 
     expect(result.sent).toBe(0);
     expect(result.managers).toEqual([]);
-    expect(sendMailMock).not.toHaveBeenCalled();
+    expect(sendMock).not.toHaveBeenCalled();
   });
 
-  test("uses provided transporter instead of creating one", async () => {
-    const customSendMail = jest.fn().mockResolvedValue({ messageId: "custom" });
-    const customTransporter = { sendMail: customSendMail };
+  test("uses provided emailSender instead of creating one", async () => {
+    const customSend = jest.fn().mockResolvedValue({ sent: true });
 
     const reminder = new PendingHoursReminder({
-      transporter: customTransporter,
+      emailSender: { send: customSend },
     });
     await reminder.run(new Date("2026-05-01"));
 
-    expect(createTransportMock).not.toHaveBeenCalled();
-    expect(customSendMail).toHaveBeenCalledTimes(2);
+    expect(customSend).toHaveBeenCalledTimes(2);
   });
 
   test("groups multiple projects for the same manager", async () => {
@@ -103,12 +95,14 @@ describe("PendingHoursReminder", () => {
       ]),
     );
 
-    const reminder = new PendingHoursReminder();
+    const reminder = new PendingHoursReminder({
+      emailSender: { send: sendMock },
+    });
     const result = await reminder.run(new Date("2026-03-01"));
 
     expect(result.sent).toBe(1);
 
-    const mgr1Call = sendMailMock.mock.calls.find(
+    const mgr1Call = sendMock.mock.calls.find(
       (call) => call[0].to === "alejandro.martinez@nubexx.com",
     );
     expect(mgr1Call[0].text).toMatch(/Customer Portal/);
@@ -143,13 +137,15 @@ describe("PendingHoursReminder", () => {
       ]),
     );
 
-    const reminder = new PendingHoursReminder();
+    const reminder = new PendingHoursReminder({
+      emailSender: { send: sendMock },
+    });
     const result = await reminder.run(new Date("2026-01-01"));
 
     expect(result.sent).toBe(1);
     expect(result.managers).toContain("alejandro.martinez@nubexx.com");
 
-    const mgr1Call = sendMailMock.mock.calls.find(
+    const mgr1Call = sendMock.mock.calls.find(
       (call) => call[0].to === "alejandro.martinez@nubexx.com",
     );
     expect(mgr1Call[0].subject).toBe(
@@ -164,7 +160,9 @@ describe("PendingHoursReminder", () => {
   });
 
   test("inserts notification records for each manager reminded", async () => {
-    const reminder = new PendingHoursReminder();
+    const reminder = new PendingHoursReminder({
+      emailSender: { send: sendMock },
+    });
     await reminder.run(new Date("2026-05-01"));
 
     const notifications = await cds.run(

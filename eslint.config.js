@@ -34,6 +34,9 @@ module.exports = [
         beforeEach: 'readonly',
         afterEach:  'readonly',
         jest:       'readonly',
+        // Node.js 18+ globals
+        fetch:           'readonly',
+        URLSearchParams: 'readonly',
       },
     },
     rules: {
