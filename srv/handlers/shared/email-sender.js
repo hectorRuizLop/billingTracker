@@ -1,69 +1,29 @@
 "use strict";
 
 const cds = require("@sap/cds");
-const fs = require("fs");
 
 /**
  * EmailSender uses SendPulse's REST API directly via native fetch.
  *
  * When SENDPULSE_USER_ID and SENDPULSE_SECRET are configured, emails are
- * sent via SendPulse's HTTP API (OAuth2 token is cached to disk).
+ * sent via SendPulse's HTTP API (OAuth2 token is kept in-memory only).
  * When credentials are missing (dev / test / local), emails are logged to
  * the console instead of failing so the application remains runnable.
+ *
+ * Tokens are cached only in-memory
  */
 class EmailSender {
   constructor({
     userId = process.env.SENDPULSE_USER_ID,
     secret = process.env.SENDPULSE_SECRET,
-    tokenStorage = process.env.SENDPULSE_TOKEN_STORAGE ||
-      "/tmp/sendpulse-token.json",
     fromName = "Billing Tracker",
   } = {}) {
     this._userId = userId;
     this._secret = secret;
-    this._tokenStorage = tokenStorage;
     this._fromName = fromName;
     this._token = null;
-    // Track expiry in-memory so we can proactively refresh before the next send
+    // Track expiry in memory so we can proactively refresh before the next send
     this._tokenExpiresAt = null;
-  }
-
-  _loadCachedToken() {
-    try {
-      if (fs.existsSync(this._tokenStorage)) {
-        const raw = fs.readFileSync(this._tokenStorage, "utf8");
-        const data = JSON.parse(raw);
-        const expiresAt = data.expires_at ? new Date(data.expires_at) : null;
-        if (expiresAt && expiresAt > new Date()) {
-          this._token = data.access_token;
-          // Mirror expiry in-memory so _ensureToken can re-check it without
-          // hitting the filesystem on every call
-          this._tokenExpiresAt = expiresAt;
-          return true;
-        }
-      }
-    } catch {
-      // ignore corrupt / missing cache file
-    }
-    return false;
-  }
-
-  _saveToken(data) {
-    try {
-      const expiresAt = new Date(Date.now() + data.expires_in * 1000);
-      const payload = {
-        access_token: data.access_token,
-        expires_at: expiresAt.toISOString(),
-      };
-      // Write to a temp file first, then rename so concurrent readers never
-      // see a half-written JSON blob (atomic on most POSIX filesystems)
-      const tmp = `${this._tokenStorage}.tmp`;
-      fs.writeFileSync(tmp, JSON.stringify(payload, null, 2));
-      fs.renameSync(tmp, this._tokenStorage);
-      this._tokenExpiresAt = expiresAt;
-    } catch {
-      // ignore write failures (e.g. read-only fs on BTP)
-    }
   }
 
   async _fetchToken() {
@@ -89,7 +49,8 @@ class EmailSender {
     }
 
     this._token = data.access_token;
-    this._saveToken(data);
+    // Cache expiry in-memory only no disk writes
+    this._tokenExpiresAt = new Date(Date.now() + data.expires_in * 1000);
     return this._token;
   }
 
@@ -99,9 +60,9 @@ class EmailSender {
     if (this._token && this._tokenExpiresAt && this._tokenExpiresAt > new Date()) {
       return this._token;
     }
-    // In-memory token is gone or expired — try the disk cache next
+    // In memory token is gone or expired fetch a fresh one
     this._token = null;
-    if (this._loadCachedToken()) return this._token;
+    this._tokenExpiresAt = null;
     return this._fetchToken();
   }
 
@@ -141,7 +102,6 @@ class EmailSender {
       if (res.status === 401) {
         this._token = null;
         this._tokenExpiresAt = null;
-        try { fs.rmSync(this._tokenStorage, { force: true }); } catch { /* ignore */ }
       }
       throw new Error(`SendPulse send failed (${res.status}): ${body}`);
     }
