@@ -49,6 +49,7 @@ class EmployeeDraftReminder {
     }
 
     const sentEmployees = [];
+    const log = cds.log("employee-draft-reminder");
 
     for (const data of Object.values(summary)) {
       const employee = data.employee;
@@ -57,23 +58,30 @@ class EmployeeDraftReminder {
       const subject = `Reminder: Finalize Your Timesheet - ${month}/${year}`;
       const text = `Hello ${employee.firstName || "Employee"},\n\nYou have ${count} draft time ${count === 1 ? "entry" : "entries"} pending for ${month}/${year}.\n\nPlease review and submit your timesheet before the monthly deadline.\n\nBest regards,\nBilling Tracker`;
 
-      await this._emailSender.send({
-        to: employee.email,
-        from: process.env.EMAIL_FROM || "noreply@nubexx.com",
-        subject,
-        text,
-      });
+      try {
+        await this._emailSender.send({
+          to: employee.email,
+          from: process.env.EMAIL_FROM || "noreply@nubexx.com",
+          subject,
+          text,
+        });
 
-      await INSERT.into(Notifications).entries({
-        recipient_ID: employee.ID,
-        type: "DraftReminder",
-        subject,
-        message: text,
-        sentAt: new Date().toISOString(),
-        status: "S",
-      });
+        // Only insert the notification record after the email actually succeeds;
+        // if send() throws we skip this so the DB reflects the real outcome
+        await INSERT.into(Notifications).entries({
+          recipient_ID: employee.ID,
+          type: "DraftReminder",
+          subject,
+          message: text,
+          sentAt: new Date().toISOString(),
+          status: "S",
+        });
 
-      sentEmployees.push(employee.email);
+        sentEmployees.push(employee.email);
+      } catch (err) {
+        // Log and continue — one bad email should not abort the rest of the loop
+        log.error(`Failed to notify ${employee.email}`, err);
+      }
     }
 
     return { sent: sentEmployees.length, employees: sentEmployees };

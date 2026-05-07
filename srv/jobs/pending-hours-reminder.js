@@ -89,23 +89,30 @@ class PendingHoursReminder {
       const subject = `Pending Time Entries for Review - ${month}/${year}`;
       const text = `Hello ${manager.firstName || "Manager"},\n\nYou have pending time entries awaiting your review from ${month}/${year}:\n\n${projectSummaries}\n\nPlease review and approve or reject them at your earliest convenience.\n\nBest regards,\nBilling Tracker`;
 
-      await this._emailSender.send({
-        to: manager.email,
-        from: process.env.EMAIL_FROM || "noreply@nubexx.com",
-        subject,
-        text,
-      });
+      try {
+        await this._emailSender.send({
+          to: manager.email,
+          from: process.env.EMAIL_FROM || "noreply@nubexx.com",
+          subject,
+          text,
+        });
 
-      await INSERT.into(Notifications).entries({
-        recipient_ID: manager.ID,
-        type: "PendingHoursReminder",
-        subject,
-        message: text,
-        sentAt: new Date().toISOString(),
-        status: "S",
-      });
+        // Only persist the notification record when the email actually succeeded;
+        // if send() throws we skip this so the DB stays in sync with reality
+        await INSERT.into(Notifications).entries({
+          recipient_ID: manager.ID,
+          type: "PendingHoursReminder",
+          subject,
+          message: text,
+          sentAt: new Date().toISOString(),
+          status: "S",
+        });
 
-      sentManagers.push(manager.email);
+        sentManagers.push(manager.email);
+      } catch (err) {
+        // Log and continue — one bad email should not abort the rest of the loop
+        cds.log("pending-hours-reminder").error(`Failed to notify ${manager.email}`, err);
+      }
     }
 
     return { sent: sentManagers.length, managers: sentManagers };
