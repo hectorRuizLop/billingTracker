@@ -2,10 +2,11 @@
 
 const cds = require("@sap/cds");
 const cron = require("node-cron");
+const { EmailSender } = require("../handlers/shared/email-sender");
 
 class EmployeeDraftReminder {
   constructor(options = {}) {
-    this._transporter = options.transporter;
+    this._emailSender = options.emailSender || new EmailSender();
     this._cronExpression = options.cronExpression || "0 9 25 * *";
   }
 
@@ -48,7 +49,6 @@ class EmployeeDraftReminder {
     }
 
     const sentEmployees = [];
-    const log = cds.log("employee-draft-reminder");
 
     for (const data of Object.values(summary)) {
       const employee = data.employee;
@@ -57,7 +57,12 @@ class EmployeeDraftReminder {
       const subject = `Reminder: Finalize Your Timesheet - ${month}/${year}`;
       const text = `Hello ${employee.firstName || "Employee"},\n\nYou have ${count} draft time ${count === 1 ? "entry" : "entries"} pending for ${month}/${year}.\n\nPlease review and submit your timesheet before the monthly deadline.\n\nBest regards,\nBilling Tracker`;
 
-      await this._sendNotification(employee.email, subject, text, log);
+      await this._emailSender.send({
+        to: employee.email,
+        from: process.env.EMAIL_FROM || "noreply@nubexx.com",
+        subject,
+        text,
+      });
 
       await INSERT.into(Notifications).entries({
         recipient_ID: employee.ID,
@@ -72,19 +77,6 @@ class EmployeeDraftReminder {
     }
 
     return { sent: sentEmployees.length, employees: sentEmployees };
-  }
-
-  async _sendNotification(to, subject, text, log) {
-    if (this._transporter) {
-      await this._transporter.sendMail({
-        from: process.env.EMAIL_FROM || "noreply@nubexx.com",
-        to,
-        subject,
-        text,
-      });
-    } else {
-      log.info(`[Simulated Email] To: ${to}\nSubject: ${subject}\n${text}`);
-    }
   }
 
   start() {
