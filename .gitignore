@@ -23,3 +23,10 @@ mta_archives/
 
 # Environment variables (secrets)
 .env
+
+# Manual integration/smoke-test scripts — not part of the Jest suite
+scripts/
+
+# SendPulse token disk cache (written at runtime, contains a short-lived access token)
+/tmp/sendpulse-token.json
+/tmp/sendpulse-token.json.tmp
