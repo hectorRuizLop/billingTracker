@@ -10,6 +10,7 @@ const {
   CLIENT_1,
 } = require("./helpers");
 const { MonthlyInvoiceJob } = require("../srv/jobs/monthly-invoice");
+const { OutboxProcessor } = require("../srv/handlers/shared/outbox-processor");
 
 describe("MonthlyInvoiceJob", () => {
   let sendMock;
@@ -80,9 +81,14 @@ describe("MonthlyInvoiceJob", () => {
         type: "InvoiceSent",
       }),
     );
+    await cds.run(
+      DELETE.from("my.billing.EmailOutbox").where({
+        referenceType: { in: ["InvoiceNew", "InvoiceRetry"] },
+      }),
+    );
   });
 
-  test("sends invoice email to client with approved hours breakdown", async () => {
+  test("queues invoice email outbox entry for client with approved hours breakdown", async () => {
     await cds.run(
       INSERT.into("my.billing.TimeEntries").entries([
         {
@@ -114,20 +120,33 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
+    const job = new MonthlyInvoiceJob();
     const result = await job.run(new Date("2026-04-01"));
 
-    expect(result.sent).toBe(1);
+    expect(result.created).toBe(1);
     expect(result.clients).toContain("contacto@techcorp.mx");
-    expect(sendMock).toHaveBeenCalledTimes(1);
 
+    const outbox = await cds.run(
+      SELECT.from("my.billing.EmailOutbox").where({
+        referenceType: "InvoiceNew",
+      }),
+    );
+    expect(outbox.length).toBe(1);
+    expect(outbox[0].to).toBe("contacto@techcorp.mx");
+    expect(outbox[0].subject).toBe("Monthly Invoice Summary - 3/2026");
+    expect(outbox[0].text).toMatch(/TechCorp SA de CV/);
+    expect(outbox[0].text).toMatch(/Customer Portal/);
+    expect(outbox[0].text).toMatch(/14\.00h/);
+    expect(outbox[0].text).toMatch(/€630\.00/);
+
+    // Processor sends the queued email
+    const processor = new OutboxProcessor({ emailSender: { send: sendMock } });
+    await processor.processPending();
+
+    expect(sendMock).toHaveBeenCalledTimes(1);
     const call = sendMock.mock.calls[0][0];
     expect(call.to).toBe("contacto@techcorp.mx");
     expect(call.subject).toBe("Monthly Invoice Summary - 3/2026");
-    expect(call.text).toMatch(/TechCorp SA de CV/);
-    expect(call.text).toMatch(/Customer Portal/);
-    expect(call.text).toMatch(/14\.00h/);
-    expect(call.text).toMatch(/€630\.00/);
   });
 
   test("does not invoice client when any of their projects has pending entries", async () => {
@@ -176,8 +195,14 @@ describe("MonthlyInvoiceJob", () => {
     const job = new MonthlyInvoiceJob();
     const result = await job.run(new Date("2026-04-01"));
 
-    expect(result.sent).toBe(0);
-    expect(sendMock).not.toHaveBeenCalled();
+    expect(result.created).toBe(0);
+
+    const outbox = await cds.run(
+      SELECT.from("my.billing.EmailOutbox").where({
+        referenceType: { in: ["InvoiceNew", "InvoiceRetry"] },
+      }),
+    );
+    expect(outbox.length).toBe(0);
   });
 
   test("skips projects with pending draft or submitted entries", async () => {
@@ -215,8 +240,14 @@ describe("MonthlyInvoiceJob", () => {
     const job = new MonthlyInvoiceJob();
     const result = await job.run(new Date("2026-04-01"));
 
-    expect(result.sent).toBe(0);
-    expect(sendMock).not.toHaveBeenCalled();
+    expect(result.created).toBe(0);
+
+    const outbox = await cds.run(
+      SELECT.from("my.billing.EmailOutbox").where({
+        referenceType: { in: ["InvoiceNew", "InvoiceRetry"] },
+      }),
+    );
+    expect(outbox.length).toBe(0);
   });
 
   test("includes closed projects even with pending entries logic", async () => {
@@ -244,10 +275,20 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
+    const job = new MonthlyInvoiceJob();
     const result = await job.run(new Date("2026-04-01"));
 
-    expect(result.sent).toBe(1);
+    expect(result.created).toBe(1);
+
+    const outbox = await cds.run(
+      SELECT.from("my.billing.EmailOutbox").where({
+        referenceType: "InvoiceNew",
+      }),
+    );
+    expect(outbox.length).toBe(1);
+
+    const processor = new OutboxProcessor({ emailSender: { send: sendMock } });
+    await processor.processPending();
     expect(sendMock).toHaveBeenCalledTimes(1);
   });
 
@@ -255,14 +296,18 @@ describe("MonthlyInvoiceJob", () => {
     const job = new MonthlyInvoiceJob();
     const result = await job.run(new Date("2026-01-01"));
 
-    expect(result.sent).toBe(0);
+    expect(result.created).toBe(0);
     expect(result.clients).toEqual([]);
-    expect(sendMock).not.toHaveBeenCalled();
+
+    const outbox = await cds.run(
+      SELECT.from("my.billing.EmailOutbox").where({
+        referenceType: { in: ["InvoiceNew", "InvoiceRetry"] },
+      }),
+    );
+    expect(outbox.length).toBe(0);
   });
 
-  test("uses provided emailSender instead of creating one", async () => {
-    const customSend = jest.fn().mockResolvedValue({ sent: true });
-
+  test("creates invoice in Draft and outbox entry; processor promotes to Sent after email", async () => {
     await cds.run(
       INSERT.into("my.billing.TimeEntries").entries([
         {
@@ -281,32 +326,7 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob({ emailSender: { send: customSend } });
-    await job.run(new Date("2026-04-01"));
-
-    expect(customSend).toHaveBeenCalledTimes(1);
-  });
-
-  test("creates invoice in Draft and promotes to Sent after email", async () => {
-    await cds.run(
-      INSERT.into("my.billing.TimeEntries").entries([
-        {
-          ID: "70000000-0000-0000-0000-000000000100",
-          date: "2026-03-10",
-          hours: 8,
-          description: "Design work",
-          status: "A",
-          rateSnapshot: 45.0,
-          employee_ID: EMP1_ID,
-          project_ID: PROJECT_CP,
-          month: 3,
-          year: 2026,
-          billingStatus: "U",
-        },
-      ]),
-    );
-
-    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
+    const job = new MonthlyInvoiceJob();
     await job.run(new Date("2026-04-01"));
 
     const invoices = await cds.run(
@@ -316,7 +336,7 @@ describe("MonthlyInvoiceJob", () => {
     expect(invoices.length).toBeGreaterThanOrEqual(1);
     const invoice = invoices.find((i) => i.invoiceNumber.includes("202603"));
     expect(invoice).toBeDefined();
-    expect(invoice.status).toBe("S");
+    expect(invoice.status).toBe("D");
     expect(parseFloat(invoice.subtotal)).toBeCloseTo(360, 2);
 
     const lines = await cds.run(
@@ -328,12 +348,22 @@ describe("MonthlyInvoiceJob", () => {
     expect(lines.length).toBe(1);
     expect(parseFloat(lines[0].hours)).toBe(8);
     expect(parseFloat(lines[0].amount)).toBeCloseTo(360, 2);
+
+    // Processor sends email and finalizes invoice
+    const processor = new OutboxProcessor({ emailSender: { send: sendMock } });
+    await processor.processPending();
+
+    const updatedInvoice = await cds.run(
+      SELECT.one
+        .from("my.billing.Invoices")
+        .where({ ID: invoice.ID })
+        .columns("status"),
+    );
+    expect(updatedInvoice.status).toBe("S");
   });
 
   // Covers the case where email sending fails after invoice creation
-  test("keeps invoice in Draft and hours as Billed when email fails", async () => {
-    sendMock.mockRejectedValue(new Error("SendGrid error"));
-
+  test("keeps invoice in Draft and hours as Billed when processor email fails", async () => {
     await cds.run(
       INSERT.into("my.billing.TimeEntries").entries([
         {
@@ -352,11 +382,16 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
+    const job = new MonthlyInvoiceJob();
     const result = await job.run(new Date("2026-04-01"));
 
-    expect(result.sent).toBe(0);
-    expect(logErrorMock).toHaveBeenCalled();
+    expect(result.created).toBe(1);
+
+    const failingSend = jest.fn().mockRejectedValue(new Error("SendGrid error"));
+    const processor = new OutboxProcessor({ emailSender: { send: failingSend } });
+    await processor.processPending();
+
+    expect(failingSend).toHaveBeenCalledTimes(1);
 
     const invoice = await cds.run(
       SELECT.one
@@ -378,7 +413,6 @@ describe("MonthlyInvoiceJob", () => {
     expect(entry.billingStatus).toBe("B");
   });
 
-  // TEST NUEVO: cubre el reintento automático
   test("retries draft invoices on subsequent runs", async () => {
     const draftInvoiceId = "80000000-0000-0000-0000-000000000001";
     await cds.run(
@@ -406,10 +440,22 @@ describe("MonthlyInvoiceJob", () => {
       }),
     );
 
-    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
+    const job = new MonthlyInvoiceJob();
     const result = await job.run(new Date("2026-04-01"));
 
-    expect(result.sent).toBe(1);
+    expect(result.created).toBe(1);
+
+    const outbox = await cds.run(
+      SELECT.from("my.billing.EmailOutbox").where({
+        referenceType: "InvoiceRetry",
+      }),
+    );
+    expect(outbox.length).toBe(1);
+
+    // Processor sends the retry email and promotes invoice to Sent
+    const processor = new OutboxProcessor({ emailSender: { send: sendMock } });
+    await processor.processPending();
+
     expect(sendMock).toHaveBeenCalledTimes(1);
 
     const invoice = await cds.run(
@@ -422,7 +468,7 @@ describe("MonthlyInvoiceJob", () => {
     expect(invoice.status).toBe("S");
   });
 
-  test("updates time entry billing status to Invoiced after successful email", async () => {
+  test("updates time entry billing status to Invoiced after successful processor run", async () => {
     await cds.run(
       INSERT.into("my.billing.TimeEntries").entries([
         {
@@ -441,8 +487,11 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
+    const job = new MonthlyInvoiceJob();
     await job.run(new Date("2026-04-01"));
+
+    const processor = new OutboxProcessor({ emailSender: { send: sendMock } });
+    await processor.processPending();
 
     const entry = await cds.run(
       SELECT.one
@@ -474,7 +523,7 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
+    const job = new MonthlyInvoiceJob();
     await job.run(new Date("2026-04-01"));
     await job.run(new Date("2026-04-01"));
 
@@ -485,7 +534,7 @@ describe("MonthlyInvoiceJob", () => {
     expect(invoices.length).toBe(1);
   });
 
-  test("sends emails to multiple clients with their respective projects", async () => {
+  test("queues outbox entries for multiple clients with their respective projects", async () => {
     await cds.run(
       INSERT.into("my.billing.TimeEntries").entries([
         {
@@ -517,20 +566,31 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
+    const job = new MonthlyInvoiceJob();
     const result = await job.run(new Date("2026-04-01"));
 
-    expect(result.sent).toBe(2);
+    expect(result.created).toBe(2);
 
-    const techCorpCall = sendMock.mock.calls.find(
-      (call) => call[0].to === "contacto@techcorp.mx",
+    const outbox = await cds.run(
+      SELECT.from("my.billing.EmailOutbox").where({
+        referenceType: "InvoiceNew",
+      }),
     );
-    expect(techCorpCall[0].text).toMatch(/Customer Portal/);
+    expect(outbox.length).toBe(2);
 
-    const dataSoftCall = sendMock.mock.calls.find(
-      (call) => call[0].to === "info@datasoft.io",
+    const techCorpEntry = outbox.find(
+      (o) => o.to === "contacto@techcorp.mx",
     );
-    expect(dataSoftCall[0].text).toMatch(/Sales Mobile App/);
+    expect(techCorpEntry.text).toMatch(/Customer Portal/);
+
+    const dataSoftEntry = outbox.find((o) => o.to === "info@datasoft.io");
+    expect(dataSoftEntry.text).toMatch(/Sales Mobile App/);
+
+    // Processor sends both emails
+    const processor = new OutboxProcessor({ emailSender: { send: sendMock } });
+    await processor.processPending();
+
+    expect(sendMock).toHaveBeenCalledTimes(2);
   });
 
   test("handles year rollover for January", async () => {
@@ -552,13 +612,21 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
+    const job = new MonthlyInvoiceJob();
     const result = await job.run(new Date("2026-01-01"));
 
-    expect(result.sent).toBe(1);
+    expect(result.created).toBe(1);
 
-    const call = sendMock.mock.calls[0][0];
-    expect(call.subject).toBe("Monthly Invoice Summary - 12/2025");
+    const outbox = await cds.run(
+      SELECT.from("my.billing.EmailOutbox").where({
+        referenceType: "InvoiceNew",
+      }),
+    );
+    expect(outbox[0].subject).toBe("Monthly Invoice Summary - 12/2025");
+
+    const processor = new OutboxProcessor({ emailSender: { send: sendMock } });
+    await processor.processPending();
+    expect(sendMock).toHaveBeenCalledTimes(1);
   });
 
   test("shows zero cost for projects with only rejected entries", async () => {
@@ -580,19 +648,22 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
+    const job = new MonthlyInvoiceJob();
     const result = await job.run(new Date("2026-04-01"));
 
-    expect(result.sent).toBe(1);
+    expect(result.created).toBe(1);
 
-    const call = sendMock.mock.calls[0][0];
-    expect(call.text).toMatch(/Customer Portal/);
-    expect(call.text).toMatch(/0\.00h/);
-    expect(call.text).toMatch(/€0\.00/);
+    const outbox = await cds.run(
+      SELECT.from("my.billing.EmailOutbox").where({
+        referenceType: "InvoiceNew",
+      }),
+    );
+    expect(outbox[0].text).toMatch(/Customer Portal/);
+    expect(outbox[0].text).toMatch(/0\.00h/);
+    expect(outbox[0].text).toMatch(/€0\.00/);
   });
 
-  // Gap 2: BillingPeriods are populated after successful invoice
-  test("creates BillingPeriods with Invoiced status after sending invoice", async () => {
+  test("creates BillingPeriods with Invoiced status after processor sends email", async () => {
     await cds.run(
       INSERT.into("my.billing.TimeEntries").entries([
         {
@@ -611,8 +682,11 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
+    const job = new MonthlyInvoiceJob();
     await job.run(new Date("2026-04-01"));
+
+    const processor = new OutboxProcessor({ emailSender: { send: sendMock } });
+    await processor.processPending();
 
     const bp = await cds.run(
       SELECT.one
@@ -626,8 +700,7 @@ describe("MonthlyInvoiceJob", () => {
     expect(parseFloat(bp.totalCost)).toBeCloseTo(360, 2);
   });
 
-  // Gap 3: Notifications row is created for each invoice sent
-  test("inserts InvoiceSent notification after successful email", async () => {
+  test("inserts InvoiceSent notification after processor sends email", async () => {
     await cds.run(
       INSERT.into("my.billing.TimeEntries").entries([
         {
@@ -646,8 +719,11 @@ describe("MonthlyInvoiceJob", () => {
       ]),
     );
 
-    const job = new MonthlyInvoiceJob({ emailSender: { send: sendMock } });
+    const job = new MonthlyInvoiceJob();
     await job.run(new Date("2026-04-01"));
+
+    const processor = new OutboxProcessor({ emailSender: { send: sendMock } });
+    await processor.processPending();
 
     const notifications = await cds.run(
       SELECT.from("my.billing.Notifications").where({
