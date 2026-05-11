@@ -5,10 +5,6 @@ const cds = require("@sap/cds");
 async function submitMonth(req) {
   const { year, month } = req.data;
 
-  if (!req.user.is("Employee")) {
-    return req.error(403, "Only employees can submit monthly time entries.");
-  }
-
   if (!Number.isInteger(year) || year < 1) {
     return req.error(400, "Year must be a valid positive integer.");
   }
