@@ -2,35 +2,46 @@
 
 const cds = require("@sap/cds");
 const cron = require("node-cron");
-const { EmailSender } = require("../handlers/shared/email-sender");
+const { acquireLock, releaseLock } = require("../handlers/shared/job-lock");
 
+/**
+ * PendingHoursReminder identifies submitted time entries from the
+ * previous month, groups them by manager, and writes reminder emails
+ * to the transactional outbox. The OutboxProcessor handles actual
+ * delivery, guaranteeing consistency between DB state and email delivery.
+ */
 class PendingHoursReminder {
   constructor(options = {}) {
-    this._emailSender = options.emailSender || new EmailSender();
     this._cronExpression = options.cronExpression || "0 9 1 * *";
-  }
-
-  _getPreviousMonth(now = new Date()) {
-    let year = now.getFullYear();
-    let month = now.getMonth();
-    if (month === 0) {
-      month = 12;
-      year--;
-    }
-    return { year, month };
+    this._jobName = options.jobName || "PendingHoursReminder";
   }
 
   async run(now = new Date()) {
+    const instanceId = `${this._jobName}-${process.pid}-${Date.now()}`;
+    const hasLock = await acquireLock(this._jobName, instanceId, 30);
+    if (!hasLock) {
+      cds.log("pending-hours-reminder").info("Job already running on another instance — skipping.");
+      return { created: 0, managers: [] };
+    }
+
+    try {
+      return await this._execute(now);
+    } finally {
+      await releaseLock(this._jobName);
+    }
+  }
+
+  async _execute(now = new Date()) {
     const { year, month } = this._getPreviousMonth(now);
 
-    const { TimeEntries, Projects, Employees } = cds.entities("my.billing");
+    const { TimeEntries, Projects, Employees, EmailOutbox } = cds.entities("my.billing");
 
     const entries = await SELECT.from(TimeEntries)
       .where({ status: "S", year, month })
       .columns("ID", "project_ID");
 
     if (entries.length === 0) {
-      return { sent: 0, managers: [] };
+      return { created: 0, managers: [] };
     }
 
     const projectIds = [...new Set(entries.map((e) => e.project_ID))];
@@ -74,11 +85,13 @@ class PendingHoursReminder {
       summary[managerId].projects[project.ID].count++;
     }
 
-    const sentManagers = [];
-    const { Notifications } = cds.entities("my.billing");
+    const createdManagers = [];
+    const { EmailOutbox: Outbox } = cds.entities("my.billing");
 
     for (const data of Object.values(summary)) {
       const manager = data.manager;
+      if (!manager || !manager.email) continue;
+
       const projectSummaries = Object.values(data.projects)
         .map(
           (p) =>
@@ -90,32 +103,43 @@ class PendingHoursReminder {
       const text = `Hello ${manager.firstName || "Manager"},\n\nYou have pending time entries awaiting your review from ${month}/${year}:\n\n${projectSummaries}\n\nPlease review and approve or reject them at your earliest convenience.\n\nBest regards,\nBilling Tracker`;
 
       try {
-        await this._emailSender.send({
-          to: manager.email,
-          from: process.env.EMAIL_FROM || "noreply@nubexx.com",
-          subject,
-          text,
+        await cds.tx(async (tx) => {
+          await tx.run(
+            INSERT.into(Outbox).entries({
+              ID: cds.utils.uuid(),
+              to: manager.email,
+              from: process.env.EMAIL_FROM || "noreply@nubexx.com",
+              subject,
+              text,
+              status: "P",
+              attempts: 0,
+              maxAttempts: 3,
+              referenceType: "PendingHoursReminder",
+              recipient_ID: manager.ID,
+            }),
+          );
         });
 
-        // Only persist the notification record when the email actually succeeded;
-        // if send() throws we skip this so the DB stays in sync with reality
-        await INSERT.into(Notifications).entries({
-          recipient_ID: manager.ID,
-          type: "PendingHoursReminder",
-          subject,
-          message: text,
-          sentAt: new Date().toISOString(),
-          status: "S",
-        });
-
-        sentManagers.push(manager.email);
+        createdManagers.push(manager.email);
       } catch (err) {
-        // Log and continue — one bad email should not abort the rest of the loop
-        cds.log("pending-hours-reminder").error(`Failed to notify ${manager.email}`, err);
+        cds.log("pending-hours-reminder").error(
+          `Failed to queue reminder for ${manager.email}`,
+          err,
+        );
       }
     }
 
-    return { sent: sentManagers.length, managers: sentManagers };
+    return { created: createdManagers.length, managers: createdManagers };
+  }
+
+  _getPreviousMonth(now = new Date()) {
+    let year = now.getFullYear();
+    let month = now.getMonth();
+    if (month === 0) {
+      month = 12;
+      year--;
+    }
+    return { year, month };
   }
 
   start() {

@@ -2,69 +2,86 @@
 
 const { cds, EMP1_ID, PROJECT_CP, PROJECT_MOBILE } = require("./helpers");
 const { PendingHoursReminder } = require("../srv/jobs/pending-hours-reminder");
+const { OutboxProcessor } = require("../srv/handlers/shared/outbox-processor");
 
 describe("PendingHoursReminder", () => {
-  let sendMock;
-
-  beforeEach(() => {
-    sendMock = jest.fn().mockResolvedValue({ sent: true });
-  });
-
-  afterEach(() => {
+  afterEach(async () => {
     jest.clearAllMocks();
+    await cds.run(
+      DELETE.from("my.billing.EmailOutbox").where({
+        referenceType: "PendingHoursReminder",
+      }),
+    );
+    await cds.run(
+      DELETE.from("my.billing.Notifications").where({
+        type: "PendingHoursReminder",
+      }),
+    );
   });
 
-  test("sends email summaries to managers with submitted time entries from previous month", async () => {
-    const reminder = new PendingHoursReminder({
-      emailSender: { send: sendMock },
-    });
-
+  test("queues outbox entries for managers with submitted time entries from previous month", async () => {
+    const reminder = new PendingHoursReminder();
     const result = await reminder.run(new Date("2026-05-01"));
 
-    expect(result.sent).toBe(2);
+    expect(result.created).toBe(2);
     expect(result.managers).toContain("alejandro.martinez@nubexx.com");
     expect(result.managers).toContain("alejandro.lopez@nubexx.com");
 
-    expect(sendMock).toHaveBeenCalledTimes(2);
+    const outbox = await cds.run(
+      SELECT.from("my.billing.EmailOutbox").where({
+        referenceType: "PendingHoursReminder",
+      }),
+    );
+    expect(outbox.length).toBe(2);
 
-    const mgr1Call = sendMock.mock.calls.find(
-      (call) => call[0].to === "alejandro.martinez@nubexx.com",
+    const mgr1Entry = outbox.find(
+      (o) => o.to === "alejandro.martinez@nubexx.com",
     );
-    expect(mgr1Call[0].subject).toBe(
-      "Pending Time Entries for Review - 4/2026",
-    );
-    expect(mgr1Call[0].text).toMatch(/Customer Portal/);
-    expect(mgr1Call[0].text).toMatch(/2 submitted time entries/);
+    expect(mgr1Entry.subject).toBe("Pending Time Entries for Review - 4/2026");
+    expect(mgr1Entry.text).toMatch(/Customer Portal/);
+    expect(mgr1Entry.text).toMatch(/2 submitted time entries/);
 
-    const mgr2Call = sendMock.mock.calls.find(
-      (call) => call[0].to === "alejandro.lopez@nubexx.com",
+    const mgr2Entry = outbox.find(
+      (o) => o.to === "alejandro.lopez@nubexx.com",
     );
-    expect(mgr2Call[0].subject).toBe(
-      "Pending Time Entries for Review - 4/2026",
-    );
-    expect(mgr2Call[0].text).toMatch(/ERP Migration/);
-    expect(mgr2Call[0].text).toMatch(/1 submitted time entry/);
+    expect(mgr2Entry.subject).toBe("Pending Time Entries for Review - 4/2026");
+    expect(mgr2Entry.text).toMatch(/ERP Migration/);
+    expect(mgr2Entry.text).toMatch(/1 submitted time entry/);
   });
 
   test("returns empty result when no submitted entries exist for previous month", async () => {
     const reminder = new PendingHoursReminder();
-
     const result = await reminder.run(new Date("2026-01-01"));
 
-    expect(result.sent).toBe(0);
+    expect(result.created).toBe(0);
     expect(result.managers).toEqual([]);
-    expect(sendMock).not.toHaveBeenCalled();
+
+    const outbox = await cds.run(
+      SELECT.from("my.billing.EmailOutbox").where({
+        referenceType: "PendingHoursReminder",
+      }),
+    );
+    expect(outbox.length).toBe(0);
   });
 
-  test("uses provided emailSender instead of creating one", async () => {
-    const customSend = jest.fn().mockResolvedValue({ sent: true });
-
-    const reminder = new PendingHoursReminder({
-      emailSender: { send: customSend },
-    });
+  test("outbox processor sends queued emails and writes notification records", async () => {
+    const reminder = new PendingHoursReminder();
     await reminder.run(new Date("2026-05-01"));
 
-    expect(customSend).toHaveBeenCalledTimes(2);
+    const sendMock = jest.fn().mockResolvedValue({ sent: true });
+    const processor = new OutboxProcessor({ emailSender: { send: sendMock } });
+    await processor.processPending();
+
+    expect(sendMock).toHaveBeenCalledTimes(2);
+
+    const notifications = await cds.run(
+      SELECT.from("my.billing.Notifications").where({
+        type: "PendingHoursReminder",
+      }),
+    );
+    expect(notifications.length).toBeGreaterThanOrEqual(2);
+    expect(notifications[0].status).toBe("S");
+    expect(notifications[0].subject).toMatch(/Pending Time Entries/);
   });
 
   test("groups multiple projects for the same manager", async () => {
@@ -95,18 +112,19 @@ describe("PendingHoursReminder", () => {
       ]),
     );
 
-    const reminder = new PendingHoursReminder({
-      emailSender: { send: sendMock },
-    });
+    const reminder = new PendingHoursReminder();
     const result = await reminder.run(new Date("2026-03-01"));
 
-    expect(result.sent).toBe(1);
+    expect(result.created).toBe(1);
 
-    const mgr1Call = sendMock.mock.calls.find(
-      (call) => call[0].to === "alejandro.martinez@nubexx.com",
+    const outbox = await cds.run(
+      SELECT.from("my.billing.EmailOutbox").where({
+        referenceType: "PendingHoursReminder",
+      }),
     );
-    expect(mgr1Call[0].text).toMatch(/Customer Portal/);
-    expect(mgr1Call[0].text).toMatch(/Sales Mobile App/);
+    expect(outbox.length).toBe(1);
+    expect(outbox[0].text).toMatch(/Customer Portal/);
+    expect(outbox[0].text).toMatch(/Sales Mobile App/);
 
     await cds.run(
       DELETE.from("my.billing.TimeEntries").where({
@@ -137,47 +155,24 @@ describe("PendingHoursReminder", () => {
       ]),
     );
 
-    const reminder = new PendingHoursReminder({
-      emailSender: { send: sendMock },
-    });
+    const reminder = new PendingHoursReminder();
     const result = await reminder.run(new Date("2026-01-01"));
 
-    expect(result.sent).toBe(1);
+    expect(result.created).toBe(1);
     expect(result.managers).toContain("alejandro.martinez@nubexx.com");
 
-    const mgr1Call = sendMock.mock.calls.find(
-      (call) => call[0].to === "alejandro.martinez@nubexx.com",
+    const outbox = await cds.run(
+      SELECT.from("my.billing.EmailOutbox").where({
+        referenceType: "PendingHoursReminder",
+      }),
     );
-    expect(mgr1Call[0].subject).toBe(
+    expect(outbox[0].subject).toBe(
       "Pending Time Entries for Review - 12/2025",
     );
 
     await cds.run(
       DELETE.from("my.billing.TimeEntries").where({
         ID: "70000000-0000-0000-0000-000000000003",
-      }),
-    );
-  });
-
-  test("inserts notification records for each manager reminded", async () => {
-    const reminder = new PendingHoursReminder({
-      emailSender: { send: sendMock },
-    });
-    await reminder.run(new Date("2026-05-01"));
-
-    const notifications = await cds.run(
-      SELECT.from("my.billing.Notifications").where({
-        type: "PendingHoursReminder",
-      }),
-    );
-
-    expect(notifications.length).toBeGreaterThanOrEqual(2);
-    expect(notifications[0].status).toBe("S");
-    expect(notifications[0].subject).toMatch(/Pending Time Entries/);
-
-    await cds.run(
-      DELETE.from("my.billing.Notifications").where({
-        type: "PendingHoursReminder",
       }),
     );
   });
