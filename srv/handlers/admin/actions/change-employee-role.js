@@ -20,33 +20,37 @@ async function changeEmployeeRole(req) {
       `Invalid role "${newRole}". Valid values: E (Employee), M (Manager), A (Admin)`,
     );
 
-  const employee = await SELECT.one.from(Employees).where({ ID: employeeId });
-  if (!employee) return req.error(404, "Employee not found");
+  return await cds.tx(async (tx) => {
+    const employee = await tx.run(SELECT.one.from(Employees).where({ ID: employeeId }));
+    if (!employee) return req.error(404, "Employee not found");
 
-  const update = { role: newRole };
+    const update = { role: newRole };
 
-  // Promoting to Manager automatically assigns the Lead category
-  if (newRole === "M") {
-    const today = new Date().toISOString().split("T")[0];
-    // Resolve the Lead category effective today
-    const lead = await SELECT.one.from(Categories).where({
-      code: "L",
-      validFrom: { "<=": today },
-      validTo: { ">=": today },
+    // Promoting to Manager automatically assigns the Lead category
+    if (newRole === "M") {
+      const today = new Date().toISOString().split("T")[0];
+      // Resolve the Lead category effective today
+      const lead = await tx.run(
+        SELECT.one.from(Categories).where({
+          code: "L",
+          validFrom: { "<=": today },
+          validTo: { ">=": today },
+        }),
+      );
+      if (lead) update.category_ID = lead.ID;
+    }
+
+    await tx.run(UPDATE(Employees).set(update).where({ ID: employeeId }));
+
+    // Manual audit — custom action bypasses @PersonalData auto-logging
+    await logSecurityEvent(req, {
+      subject: "Employee role changed",
+      object: { type: "my.billing.Employees", id: { ID: employeeId } },
+      attributes: [{ name: "role", old: employee.role, new: newRole }],
     });
-    if (lead) update.category_ID = lead.ID;
-  }
 
-  await UPDATE(Employees).set(update).where({ ID: employeeId });
-
-  // Manual audit — custom action bypasses @PersonalData auto-logging
-  await logSecurityEvent(req, {
-    subject: "Employee role changed",
-    object: { type: "my.billing.Employees", id: { ID: employeeId } },
-    attributes: [{ name: "role", old: employee.role, new: newRole }],
+    return `Employee role updated to ${newRole}`;
   });
-
-  return `Employee role updated to ${newRole}`;
 }
 
 module.exports = { changeEmployeeRole };
