@@ -50,22 +50,26 @@ module.exports = class AdminService extends cds.ApplicationService {
       const [{ ID }] = req.params;
       const { Clients } = cds.entities("my.billing");
 
-      const client = await SELECT.one
-        .from(Clients)
-        .where({ ID, isDeleted: false });
-      if (!client) return req.error(404, "Client not found");
+      return await cds.tx(async (tx) => {
+        const client = await tx.run(
+          SELECT.one.from(Clients).where({ ID, isDeleted: false }),
+        );
+        if (!client) return req.error(404, "Client not found");
 
-      await UPDATE(Clients)
-        .set({ isDeleted: true, deletedAt: new Date(), deletedBy: req.user.id })
-        .where({ ID });
+        await tx.run(
+          UPDATE(Clients)
+            .set({ isDeleted: true, deletedAt: new Date(), deletedBy: req.user.id })
+            .where({ ID }),
+        );
 
-      await logSecurityEvent(req, {
-        subject: "Client soft-deleted",
-        object: { type: "my.billing.Clients", id: { ID } },
-        attributes: [{ name: "isDeleted", old: false, new: true }],
+        await logSecurityEvent(req, {
+          subject: "Client soft-deleted",
+          object: { type: "my.billing.Clients", id: { ID } },
+          attributes: [{ name: "isDeleted", old: false, new: true }],
+        });
+
+        return req.reply();
       });
-
-      return req.reply();
     });
 
     this.on("changeEmployeeRole", handlers.admin.actions.changeEmployeeRole);

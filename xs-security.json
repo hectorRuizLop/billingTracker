@@ -14,6 +14,28 @@
     }
   ],
   "attributes": [],
-  "role-templates": [],
+  "role-templates": [
+    {
+      "name": "Admin",
+      "description": "Administrator with full access",
+      "scope-references": [
+        "$XSAPPNAME.Admin"
+      ]
+    },
+    {
+      "name": "Manager",
+      "description": "Project Manager who can approve time entries and manage projects",
+      "scope-references": [
+        "$XSAPPNAME.Manager"
+      ]
+    },
+    {
+      "name": "Employee",
+      "description": "Employee who can submit time entries",
+      "scope-references": [
+        "$XSAPPNAME.Employee"
+      ]
+    }
+  ],
   "authorities-inheritance": false
 }

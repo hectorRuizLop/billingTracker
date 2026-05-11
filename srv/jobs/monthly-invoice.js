@@ -2,12 +2,51 @@
 
 const cds = require("@sap/cds");
 const cron = require("node-cron");
-const { EmailSender } = require("../handlers/shared/email-sender");
+const { acquireLock, releaseLock } = require("../handlers/shared/job-lock");
 
+/**
+ * MonthlyInvoiceJob generates invoice records in Draft status and
+ * writes the corresponding email payloads to the transactional outbox.
+ *
+ * The OutboxProcessor handles actual email delivery and promotes
+ * invoices from Draft to Sent, guaranteeing consistency even if the
+ * container restarts or the SendPulse API is temporarily unavailable.
+ */
 class MonthlyInvoiceJob {
   constructor(options = {}) {
-    this._emailSender = options.emailSender || new EmailSender();
     this._cronExpression = options.cronExpression || "0 9 2 * *";
+    this._jobName = options.jobName || "MonthlyInvoiceJob";
+  }
+
+  async run(now = new Date()) {
+    const instanceId = `${this._jobName}-${process.pid}-${Date.now()}`;
+    const hasLock = await acquireLock(this._jobName, instanceId, 60);
+    if (!hasLock) {
+      cds.log("monthly-invoice").info("Job already running on another instance — skipping.");
+      return { created: 0, clients: [] };
+    }
+
+    try {
+      return await this._execute(now);
+    } finally {
+      await releaseLock(this._jobName);
+    }
+  }
+
+  async _execute(now = new Date()) {
+    const { year, month } = this._getPreviousMonth(now);
+    const log = cds.log("monthly-invoice");
+    const createdClients = [];
+
+    // Retry sending draft invoices first
+    const retried = await this._retryDraftInvoices(year, month, now, log);
+    createdClients.push(...retried);
+
+    // Create new invoices for eligible clients
+    const newlyCreated = await this._createNewInvoices(year, month, now, log);
+    createdClients.push(...newlyCreated);
+
+    return { created: createdClients.length, clients: createdClients };
   }
 
   _getPreviousMonth(now = new Date()) {
@@ -24,22 +63,6 @@ class MonthlyInvoiceJob {
     return `INV-${clientId.substring(0, 8)}-${year}${String(month).padStart(2, "0")}`;
   }
 
-  async run(now = new Date()) {
-    const { year, month } = this._getPreviousMonth(now);
-    const log = cds.log("monthly-invoice");
-    const sentClients = [];
-
-    // Re try sending draft invoices first
-    const retried = await this._retryDraftInvoices(year, month, now, log);
-    sentClients.push(...retried);
-
-    // Create new invoices for eligible clients and send
-    const newlySent = await this._createNewInvoices(year, month, now, log);
-    sentClients.push(...newlySent);
-
-    return { sent: sentClients.length, clients: sentClients };
-  }
-
   async _retryDraftInvoices(year, month, now, log) {
     const {
       Invoices,
@@ -47,10 +70,9 @@ class MonthlyInvoiceJob {
       TimeEntries,
       Projects,
       Clients,
-      BillingPeriods,
-      Notifications,
+      EmailOutbox,
     } = cds.entities("my.billing");
-    const sentClients = [];
+    const createdClients = [];
 
     const invoiceNumberPattern = `%-${year}${String(month).padStart(2, "0")}`;
     const draftInvoices = await SELECT.from(Invoices)
@@ -61,7 +83,7 @@ class MonthlyInvoiceJob {
       .columns("ID", "client_ID", "invoiceNumber", "subtotal", "total");
 
     if (draftInvoices.length === 0) {
-      return sentClients;
+      return createdClients;
     }
 
     const invoiceIds = draftInvoices.map((i) => i.ID);
@@ -108,6 +130,7 @@ class MonthlyInvoiceJob {
       }
       if (!invoiceProjects[line.invoice_ID][project.ID]) {
         invoiceProjects[line.invoice_ID][project.ID] = {
+          projectId: project.ID,
           name: project.name,
           totalHours: 0,
           totalCost: 0,
@@ -145,70 +168,45 @@ class MonthlyInvoiceJob {
         `  Cost: €${overallCost.toFixed(2)}\n\n` +
         `Best regards,\nBilling Tracker`;
 
+      const retryEntryIds = lines
+        .filter((l) => l.invoice_ID === invoice.ID)
+        .map((l) => l.timeEntry_ID);
+
       try {
-        await this._emailSender.send({
-          to: client.email,
-          from: process.env.EMAIL_FROM || "noreply@nubexx.com",
-          subject,
-          text,
-        });
-
-        const invoiceEntryIds = lines
-          .filter((l) => l.invoice_ID === invoice.ID)
-          .map((l) => l.timeEntry_ID);
-
         await cds.tx(async (tx) => {
           await tx.run(
-            UPDATE(Invoices).set({ status: "S" }).where({ ID: invoice.ID }),
+            INSERT.into(EmailOutbox).entries({
+              ID: cds.utils.uuid(),
+              to: client.email,
+              from: process.env.EMAIL_FROM || "noreply@nubexx.com",
+              subject,
+              text,
+              status: "P",
+              attempts: 0,
+              maxAttempts: 3,
+              referenceId: invoice.ID,
+              referenceType: "InvoiceRetry",
+              client_ID: client.ID,
+              payload: JSON.stringify({
+                entryIds: retryEntryIds,
+                projectsData,
+                year,
+                month,
+              }),
+            }),
           );
-          if (invoiceEntryIds.length > 0) {
-            await tx.run(
-              UPDATE(TimeEntries)
-                .set({ billingStatus: "I" })
-                .where({ ID: { in: invoiceEntryIds } }),
-            );
-          }
-
-          // Gap 2: mark billing periods as invoiced so re-runs are safe
-          const retryProjectIds = Object.keys(
-            invoiceProjects[invoice.ID] || {},
-          );
-          for (const pid of retryProjectIds) {
-            const existingBp = await tx.run(
-              SELECT.one
-                .from(BillingPeriods)
-                .where({ project_ID: pid, year, month }),
-            );
-            if (existingBp) {
-              await tx.run(
-                UPDATE(BillingPeriods)
-                  .set({ status: "I" })
-                  .where({ ID: existingBp.ID }),
-              );
-            }
-          }
         });
 
-        // Gap 3: log notification record for invoice retry
-        await INSERT.into(Notifications).entries({
-          client_ID: invoice.client_ID,
-          type: "InvoiceSent",
-          subject,
-          message: text,
-          sentAt: new Date().toISOString(),
-          status: "S",
-        });
-
-        sentClients.push(client.email);
+        createdClients.push(client.email);
       } catch (err) {
         log.error(
-          `Retry failed for invoice ${invoice.invoiceNumber} (${client.email}):`,
+          `Failed to queue retry for invoice ${invoice.invoiceNumber} (${client.email}):`,
           err,
         );
       }
     }
 
-    return sentClients;
+    return createdClients;
   }
 
   async _createNewInvoices(year, month, now, log) {
@@ -218,10 +216,9 @@ class MonthlyInvoiceJob {
       Clients,
       Invoices,
       InvoiceLines,
-      BillingPeriods,
-      Notifications,
+      EmailOutbox,
     } = cds.entities("my.billing");
-    const sentClients = [];
+    const createdClients = [];
 
     // Projects with entries unbilled
     const entryProjects = await SELECT.distinct
@@ -233,7 +230,7 @@ class MonthlyInvoiceJob {
       })
       .columns("project_ID");
 
-    if (entryProjects.length === 0) return sentClients;
+    if (entryProjects.length === 0) return createdClients;
 
     const projectIds = entryProjects.map((e) => e.project_ID);
 
@@ -262,7 +259,7 @@ class MonthlyInvoiceJob {
       }
     }
 
-    if (eligibleProjectIds.size === 0) return sentClients;
+    if (eligibleProjectIds.size === 0) return createdClients;
 
     // Eligible projects grouped by client
     const clientAllProjects = {};
@@ -290,7 +287,7 @@ class MonthlyInvoiceJob {
       }
     }
 
-    if (eligibleClientIds.length === 0) return sentClients;
+    if (eligibleClientIds.length === 0) return createdClients;
 
     // Clients that already have an invoice excluded
     const existingInvoices = await SELECT.from(Invoices)
@@ -310,7 +307,7 @@ class MonthlyInvoiceJob {
       (id) => !clientsWithInvoice.has(id),
     );
 
-    if (newEligibleClientIds.length === 0) return sentClients;
+    if (newEligibleClientIds.length === 0) return createdClients;
 
     // Approved entries
     const newEligibleProjectIds = projects
@@ -335,7 +332,7 @@ class MonthlyInvoiceJob {
       .where({ ID: { in: newEligibleClientIds }, isDeleted: false })
       .columns("ID", "name", "email");
 
-    if (clients.length === 0) return sentClients;
+    if (clients.length === 0) return createdClients;
 
     const projectMap = {};
     for (const p of projects) projectMap[p.ID] = p;
@@ -343,7 +340,7 @@ class MonthlyInvoiceJob {
     const clientMap = {};
     for (const c of clients) clientMap[c.ID] = c;
 
-    // 6. Agrupar
+    // Group by client/project
     const clientProjectsData = {};
     for (const entry of approvedEntries) {
       const project = projectMap[entry.project_ID];
@@ -369,6 +366,7 @@ class MonthlyInvoiceJob {
       clientProjectsData[clientId][project.ID].totalCost += cost;
     }
 
+    // Ensure all eligible projects appear (even with zero approved entries)
     for (const projectId of newEligibleProjectIds) {
       const project = projectMap[projectId];
       if (!project) continue;
@@ -437,7 +435,7 @@ class MonthlyInvoiceJob {
           }
         }
 
-        // Create invoice and lines and update entries
+        // Single atomic transaction: create invoice, lines, update entries, queue email
         await cds.tx(async (tx) => {
           await tx.run(
             INSERT.into(Invoices).entries({
@@ -463,83 +461,45 @@ class MonthlyInvoiceJob {
                 .where({ ID: { in: entryIds } }),
             );
           }
-        });
 
-        // Enviar email DESPUÉS del commit
-        await this._emailSender.send({
-          to: client.email,
-          from: process.env.EMAIL_FROM || "noreply@nubexx.com",
-          subject,
-          text,
-        });
-
-        // Finalize invoice status, billing periods, and notification log
-        await cds.tx(async (tx) => {
           await tx.run(
-            UPDATE(Invoices).set({ status: "S" }).where({ ID: invoiceId }),
-          );
-          if (entryIds.length > 0) {
-            await tx.run(
-              UPDATE(TimeEntries)
-                .set({ billingStatus: "I" })
-                .where({ ID: { in: entryIds } }),
-            );
-          }
-
-          // Upsert BillingPeriods for each project in this invoice
-          for (const p of projectsData) {
-            const existingBp = await tx.run(
-              SELECT.one
-                .from(BillingPeriods)
-                .where({ project_ID: p.projectId, year, month }),
-            );
-            if (existingBp) {
-              await tx.run(
-                UPDATE(BillingPeriods)
-                  .set({
-                    status: "I",
-                    totalHours: p.totalHours,
-                    totalCost: p.totalCost,
-                  })
-                  .where({ ID: existingBp.ID }),
-              );
-            } else {
-              await tx.run(
-                INSERT.into(BillingPeriods).entries({
-                  ID: cds.utils.uuid(),
-                  project_ID: p.projectId,
-                  year,
-                  month,
-                  status: "I",
+            INSERT.into(EmailOutbox).entries({
+              ID: cds.utils.uuid(),
+              to: client.email,
+              from: process.env.EMAIL_FROM || "noreply@nubexx.com",
+              subject,
+              text,
+              status: "P",
+              attempts: 0,
+              maxAttempts: 3,
+              referenceId: invoiceId,
+              referenceType: "InvoiceNew",
+              client_ID: client.ID,
+              payload: JSON.stringify({
+                entryIds,
+                projectsData: projectsData.map((p) => ({
+                  projectId: p.projectId,
                   totalHours: p.totalHours,
                   totalCost: p.totalCost,
-                }),
-              );
-            }
-          }
+                })),
+                year,
+                month,
+              }),
+            }),
+          );
         });
 
-        // Gap 3: log notification record for new invoice
-        await INSERT.into(Notifications).entries({
-          client_ID: clientId,
-          type: "InvoiceSent",
-          subject,
-          message: text,
-          sentAt: new Date().toISOString(),
-          status: "S",
-        });
-
-        sentClients.push(client.email);
+        createdClients.push(client.email);
       } catch (err) {
         log.error(
-          `Failed to send invoice email for ${client.email}. ` +
+          `Failed to create invoice for ${client.email}. ` +
             `Invoice remains in Draft for retry.`,
           err,
         );
       }
     }
 
-    return sentClients;
+    return createdClients;
   }
 
   start() {

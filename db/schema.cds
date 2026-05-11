@@ -218,3 +218,26 @@ entity Notifications : cuid, managed {
   status    : String(1) default 'P'; // P=Pending, S=Sent, F=Failed
   isRead    : Boolean default false;
 }
+
+entity EmailOutbox : cuid, managed {
+  to            : String(100) @mandatory;
+  ![from]       : String(100) @mandatory;
+  subject       : String(200) @mandatory;
+  text          : LargeString @mandatory;
+  status        : String(1) default 'P'; // P=Pending, S=Sent, F=Failed
+  attempts      : Integer default 0;
+  maxAttempts   : Integer default 3;
+  error         : String(500);
+  referenceId   : UUID;
+  referenceType : String(50);
+  payload       : LargeString; // JSON context for finalization
+  recipient_ID  : UUID;
+  client_ID     : UUID;
+}
+
+entity JobLocks : cuid {
+  jobName   : String(50) @mandatory;
+  lockedAt  : Timestamp;
+  lockedBy  : String(100);
+  expiresAt : Timestamp;
+}
