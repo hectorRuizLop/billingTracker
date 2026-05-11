@@ -2,27 +2,47 @@
 
 const cds = require("@sap/cds");
 const cron = require("node-cron");
-const { EmailSender } = require("../handlers/shared/email-sender");
+const { acquireLock, releaseLock } = require("../handlers/shared/job-lock");
 
+/**
+ * EmployeeDraftReminder identifies employees with draft time entries
+ * for the current month and writes reminder emails to the transactional
+ * outbox. The OutboxProcessor handles actual delivery, guaranteeing
+ * consistency between DB state and email delivery even across restarts.
+ */
 class EmployeeDraftReminder {
   constructor(options = {}) {
-    this._emailSender = options.emailSender || new EmailSender();
     this._cronExpression = options.cronExpression || "0 9 25 * *";
+    this._jobName = options.jobName || "EmployeeDraftReminder";
   }
 
   async run(now = new Date()) {
+    const instanceId = `${this._jobName}-${process.pid}-${Date.now()}`;
+    const hasLock = await acquireLock(this._jobName, instanceId, 30);
+    if (!hasLock) {
+      cds.log("employee-draft-reminder").info("Job already running on another instance — skipping.");
+      return { created: 0, employees: [] };
+    }
+
+    try {
+      return await this._execute(now);
+    } finally {
+      await releaseLock(this._jobName);
+    }
+  }
+
+  async _execute(now = new Date()) {
     const year = now.getFullYear();
     const month = now.getMonth() + 1;
 
-    const { TimeEntries, Employees, Notifications } =
-      cds.entities("my.billing");
+    const { TimeEntries, Employees, EmailOutbox } = cds.entities("my.billing");
 
     const draftEntries = await SELECT.from(TimeEntries)
       .where({ status: "D", year, month })
       .columns("ID", "employee_ID", "project_ID", "date", "hours");
 
     if (draftEntries.length === 0) {
-      return { sent: 0, employees: [] };
+      return { created: 0, employees: [] };
     }
 
     const employeeIds = [...new Set(draftEntries.map((e) => e.employee_ID))];
@@ -48,43 +68,43 @@ class EmployeeDraftReminder {
       summary[empId].entries.push(e);
     }
 
-    const sentEmployees = [];
+    const createdEmployees = [];
     const log = cds.log("employee-draft-reminder");
 
     for (const data of Object.values(summary)) {
       const employee = data.employee;
-      const count = data.entries.length;
+      if (!employee || !employee.email) continue;
 
+      const count = data.entries.length;
       const subject = `Reminder: Finalize Your Timesheet - ${month}/${year}`;
       const text = `Hello ${employee.firstName || "Employee"},\n\nYou have ${count} draft time ${count === 1 ? "entry" : "entries"} pending for ${month}/${year}.\n\nPlease review and submit your timesheet before the monthly deadline.\n\nBest regards,\nBilling Tracker`;
 
       try {
-        await this._emailSender.send({
-          to: employee.email,
-          from: process.env.EMAIL_FROM || "noreply@nubexx.com",
-          subject,
-          text,
+        await cds.tx(async (tx) => {
+          await tx.run(
+            INSERT.into(EmailOutbox).entries({
+              ID: cds.utils.uuid(),
+              to: employee.email,
+              from: process.env.EMAIL_FROM || "noreply@nubexx.com",
+              subject,
+              text,
+              status: "P",
+              attempts: 0,
+              maxAttempts: 3,
+              referenceType: "DraftReminder",
+              recipient_ID: employee.ID,
+            }),
+          );
         });
 
-        // Only insert the notification record after the email actually succeeds;
-        // if send() throws we skip this so the DB reflects the real outcome
-        await INSERT.into(Notifications).entries({
-          recipient_ID: employee.ID,
-          type: "DraftReminder",
-          subject,
-          message: text,
-          sentAt: new Date().toISOString(),
-          status: "S",
-        });
-
-        sentEmployees.push(employee.email);
+        createdEmployees.push(employee.email);
       } catch (err) {
-        // Log and continue — one bad email should not abort the rest of the loop
-        log.error(`Failed to notify ${employee.email}`, err);
+        // Log and continue — one bad outbox write should not abort the rest of the loop
+        log.error(`Failed to queue reminder for ${employee.email}`, err);
       }
     }
 
-    return { sent: sentEmployees.length, employees: sentEmployees };
+    return { created: createdEmployees.length, employees: createdEmployees };
   }
 
   start() {
