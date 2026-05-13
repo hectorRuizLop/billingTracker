@@ -1,0 +1,173 @@
+{
+  "_version": "1.60.0",
+  "sap.app": {
+    "id": "nubexx.billing.employee",
+    "type": "application",
+    "title": "{{appTitle}}",
+    "description": "{{appDescription}}",
+    "i18n": "i18n/i18n.properties",
+    "applicationVersion": {
+      "version": "1.0.0"
+    },
+    "dataSources": {
+      "EmployeeService": {
+        "uri": "/api/employee/",
+        "type": "OData",
+        "settings": {
+          "odataVersion": "4.0"
+        }
+      }
+    },
+    "crossNavigation": {
+      "inbounds": {
+        "employee-time-tracking": {
+          "semanticObject": "TimeEntries",
+          "action": "manage",
+          "title": "{{appTitle}}",
+          "signature": {
+            "parameters": {},
+            "additionalParameters": "allowed"
+          }
+        }
+      }
+    }
+  },
+  "sap.ui": {
+    "technology": "UI5",
+    "deviceTypes": {
+      "desktop": true,
+      "tablet": true,
+      "phone": true
+    }
+  },
+  "sap.ui5": {
+    "dependencies": {
+      "minUI5Version": "1.120.0",
+      "libs": {
+        "sap.fe.core": {},
+        "sap.fe.templates": {}
+      }
+    },
+    "resourceRoots": {
+      "nubexx.billing.employee.ext": "./ext"
+    },
+    "models": {
+      "i18n": {
+        "type": "sap.ui.model.resource.ResourceModel",
+        "uri": "i18n/i18n.properties"
+      },
+      "": {
+        "dataSource": "EmployeeService",
+        "settings": {
+          "synchronizationMode": "None",
+          "operationMode": "Server",
+          "autoExpandSelect": true,
+          "earlyRequests": true
+        }
+      }
+    },
+    "routing": {
+      "routes": [
+        {
+          "pattern": ":?query:",
+          "name": "MyTimeEntriesList",
+          "target": "MyTimeEntriesList"
+        },
+        {
+          "pattern": "MyTimeEntries({key}):?query:",
+          "name": "MyTimeEntriesDetails",
+          "target": "MyTimeEntriesDetails"
+        },
+        {
+          "pattern": "MyProjectSummary:?query:",
+          "name": "MyProjectSummaryList",
+          "target": "MyProjectSummaryList"
+        },
+        {
+          "pattern": "MyMonthlySummary:?query:",
+          "name": "MyMonthlySummaryList",
+          "target": "MyMonthlySummaryList"
+        }
+      ],
+      "targets": {
+        "MyTimeEntriesList": {
+          "type": "Component",
+          "id": "MyTimeEntriesList",
+          "name": "sap.fe.templates.ListReport",
+          "options": {
+            "settings": {
+              "entitySet": "MyTimeEntries",
+              "liveMode": true,
+              "variantManagement": "Page",
+              "navigation": {
+                "MyTimeEntries": {
+                  "detail": {
+                    "route": "MyTimeEntriesDetails"
+                  }
+                }
+              },
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "MyTimeEntriesDetails": {
+          "type": "Component",
+          "id": "MyTimeEntriesDetails",
+          "name": "sap.fe.templates.ObjectPage",
+          "options": {
+            "settings": {
+              "entitySet": "MyTimeEntries",
+              "editableHeaderContent": false,
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.FieldGroup#Details": {
+                  "formSettings": {
+                    "labelSpan": "L12 M12"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "MyProjectSummaryList": {
+          "type": "Component",
+          "id": "MyProjectSummaryList",
+          "name": "sap.fe.templates.ListReport",
+          "options": {
+            "settings": {
+              "entitySet": "MyProjectSummary",
+              "liveMode": true,
+              "variantManagement": "Page"
+            }
+          }
+        },
+        "MyMonthlySummaryList": {
+          "type": "Component",
+          "id": "MyMonthlySummaryList",
+          "name": "sap.fe.templates.ListReport",
+          "options": {
+            "settings": {
+              "entitySet": "MyMonthlySummary",
+              "liveMode": true,
+              "variantManagement": "Page"
+            }
+          }
+        }
+      }
+    },
+
+    "contentDensities": {
+      "compact": true,
+      "cozy": true
+    }
+  },
+  "sap.fiori": {
+    "registrationIds": [],
+    "archeType": "transactional"
+  }
+}
