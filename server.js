@@ -6,13 +6,16 @@ module.exports = async function server(o) {
   const app = await cds.server(o);
 
   if (process.env.NODE_ENV !== "test") {
-    // Start transactional outbox processor in a background spawn.
+    // Start the transactional outbox processor as a plain background task.
+    // Do not wrap the endless loop in cds.spawn(): cds.spawn opens a CAP
+    // transaction context, and an endless callback can keep the SQLite pool's
+    // single connection busy forever in local development.
     // This decouples email delivery from HTTP requests and guarantees
     // that emails are retried independently of job execution.
-    cds.spawn(async () => {
-      const { OutboxProcessor } = require("./srv/handlers/shared/outbox-processor");
-      const processor = new OutboxProcessor();
-      await processor.start();
+    const { OutboxProcessor } = require("./srv/handlers/shared/outbox-processor");
+    const outboxProcessor = new OutboxProcessor();
+    outboxProcessor.start().catch((err) => {
+      cds.log("outbox-processor").error("Outbox processor stopped unexpectedly:", err);
     });
 
     // Schedule jobs using node-cron. In a multi-instance deployment,
