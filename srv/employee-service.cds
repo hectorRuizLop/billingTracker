@@ -106,5 +106,43 @@ service EmployeeService @(path: '/api/employee')@(requires: [
           @readonly rateSnapshot
     };
 
+  // Aggregated view: total hours per project for the current employee
+  // (populated by custom handler; not a real DB view)
+  @readonly
+  @restrict: [{
+    grant: 'READ',
+    to   : [
+      'Employee',
+      'Manager',
+      'Admin'
+    ]
+  }]
+  entity MyProjectSummary {
+    key ID          : UUID;
+        project_ID  : UUID;
+        projectName : String;
+        totalHours  : Decimal;
+        entryCount  : Integer;
+  };
+
+  // Aggregated view: total hours per month for the current employee
+  // (populated by custom handler; not a real DB view)
+  @readonly
+  @restrict: [{
+    grant: 'READ',
+    to   : [
+      'Employee',
+      'Manager',
+      'Admin'
+    ]
+  }]
+  entity MyMonthlySummary {
+    key ID         : String;
+        year       : Integer;
+        month      : Integer;
+        totalHours : Decimal;
+        entryCount : Integer;
+  };
+
   action submitMonth(year: Integer, month: Integer) returns String;
 }
