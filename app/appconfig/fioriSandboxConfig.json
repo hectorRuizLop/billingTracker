@@ -1,0 +1,72 @@
+{
+  "services": {
+    "LaunchPage": {
+      "adapter": {
+        "config": {
+          "groups": [
+            {
+              "id": "Employee",
+              "title": "Empleado",
+              "isPreset": true,
+              "isVisible": true,
+              "isGroupLocked": false,
+              "tiles": [
+                {
+                  "id": "EmployeeTimeTracking",
+                  "tileType": "sap.ushell.ui.tile.StaticTile",
+                  "properties": {
+                    "title": "Fichajes de Empleado",
+                    "targetURL": "#TimeEntries-manage"
+                  }
+                },
+                {
+                  "id": "EmployeeProjectSummary",
+                  "tileType": "sap.ushell.ui.tile.StaticTile",
+                  "properties": {
+                    "title": "Totales por Proyecto",
+                    "targetURL": "#TimeEntries-manage&/MyProjectSummary"
+                  }
+                },
+                {
+                  "id": "EmployeeMonthlySummary",
+                  "tileType": "sap.ushell.ui.tile.StaticTile",
+                  "properties": {
+                    "title": "Resumen Mensual",
+                    "targetURL": "#TimeEntries-manage&/MyMonthlySummary"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "NavTargetResolution": {
+      "config": {
+        "enableClientSideTargetResolution": true
+      }
+    },
+    "ClientSideTargetResolution": {
+      "adapter": {
+        "config": {
+          "inbounds": {
+            "EmployeeTimeTracking": {
+              "semanticObject": "TimeEntries",
+              "action": "manage",
+              "title": "Fichajes de Empleado",
+              "signature": {
+                "parameters": {},
+                "additionalParameters": "allowed"
+              },
+              "resolutionResult": {
+                "applicationType": "SAPUI5",
+                "additionalInformation": "SAPUI5.Component=nubexx.billing.employee",
+                "url": "/employee-time-tracking/webapp"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
