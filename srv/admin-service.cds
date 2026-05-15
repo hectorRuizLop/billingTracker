@@ -10,13 +10,13 @@ service AdminService @(path: '/api/admin')@(requires: 'Admin') {
   entity TimeEntries        as
     projection on db.TimeEntries {
       *,
-      @readonly rateSnapshot,
+      @readonly year         : String,
+      @readonly rateSnapshot : Decimal(15,2),
       @readonly billingStatus,
       @readonly reviewedAt,
       @readonly reviewedBy,
       @readonly rejectionNote,
-      @readonly month,
-      @readonly year
+      @readonly month
     };
 
   entity Categories         as projection on db.Categories;

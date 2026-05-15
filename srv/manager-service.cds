@@ -43,12 +43,13 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
   entity TimeEntries        as
     projection on db.TimeEntries {
       *,
+      @readonly year         : String,
+      @readonly rateSnapshot : Decimal(15,2),
       (
         employee.firstName || ' ' || employee.lastName
       )                      as employeeName      : String,
       employee.category.name as categoryName,
       project.name           as projectName,
-      @readonly rateSnapshot,
       @readonly status,
       @readonly billingStatus,
       @readonly reviewedAt,
