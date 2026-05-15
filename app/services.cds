@@ -3,3 +3,4 @@
 */
 
 using from './employee-time-tracking/fiori-service';
+using from './manager-dashboard/fiori-service';
