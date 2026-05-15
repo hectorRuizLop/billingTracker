@@ -40,6 +40,9 @@
             "url": ":memory:"
           }
         },
+        "audit-log": {
+          "kind": "audit-log-to-console"
+        },
         "auth": {
           "kind": "mocked",
           "users": {
