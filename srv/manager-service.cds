@@ -9,6 +9,7 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
   entity Projects           as
     projection on db.Projects {
       *,
+      client.name as clientName,
       virtual totalHours               : Decimal(15, 2),
       virtual totalCost                : Decimal(19, 4), // Preserve decimals in aggregates
       virtual budgetRemaining          : Decimal(19, 4), // Avoid rounding cascade
@@ -25,11 +26,18 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
       virtual seniorHours              : Decimal(15, 2),
       virtual seniorCost               : Decimal(19, 4),
       virtual leadHours                : Decimal(15, 2),
-      virtual leadCost                 : Decimal(19, 4)
+      virtual leadCost                 : Decimal(19, 4),
+      virtual statusCriticality            : Integer,
+      virtual budgetCriticality            : Integer,
+      virtual projectedBudgetCriticality   : Integer
     };
 
   @restrict: [{
-    grant: 'READ',
+    grant: [
+      'READ',
+      'approveTimeEntry',
+      'rejectTimeEntry'
+    ],
     where: 'project.manager.externalId = $user'
   }]
   entity TimeEntries        as
@@ -53,14 +61,34 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
         else (
                hours * rateSnapshot
              )
-      end                    as cost         : Decimal(19, 4) // Keep 4 decimals
+      end                    as cost             : Decimal(19, 4), // Keep 4 decimals
+      virtual null               as statusCriticality : Integer,
+      
+      // virtual field used to resolve the manager's human readable name 
+      // instead of displaying the raw UUID stored in reviewedBy
+      virtual null               as reviewerName : String
+    } actions {
+      // Only enable the action button when the time entry is Submitted ('S')
+      @Core.OperationAvailable: { $edmJson: { $Eq: [{ $Path: 'in/status' }, 'S'] } }
+      action approveTimeEntry() returns String;
+
+      // Only enable the action button when the time entry is Submitted ('S')
+      @Core.OperationAvailable: { $edmJson: { $Eq: [{ $Path: 'in/status' }, 'S'] } }
+      action rejectTimeEntry(rejectionNote: String) returns String;
     };
 
   @restrict: [{
     grant: '*',
     where: 'project.manager.externalId = $user'
   }]
-  entity ProjectAssignments as projection on db.ProjectAssignments;
+  entity ProjectAssignments as projection on db.ProjectAssignments {
+    *,
+    employee : redirected to Employees,
+    (
+      employee.firstName || ' ' || employee.lastName
+    )                      as employeeName : String,
+    employee.category.name as categoryName : String
+  };
 
   // Managers can read billing periods for projects they manage
   @restrict: [{
@@ -69,7 +97,30 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
   }]
   entity BillingPeriods     as projection on db.BillingPeriods;
 
-  action approveTimeEntry(timeEntryId: UUID)                       returns String;
-  action rejectTimeEntry(timeEntryId: UUID, rejectionNote: String) returns String;
+  // Read-only projections for Fiori ValueHelps
+  @readonly
+  entity Clients            as
+    projection on db.Clients {
+      key ID,
+          name,
+          email
+    }
+    where isDeleted = false;
+
+  @readonly
+  entity Employees          as
+    projection on db.Employees {
+      key ID,
+          externalId,
+          firstName,
+          lastName,
+          (
+            firstName || ' ' || lastName
+          )             as fullName     : String,
+          email,
+          category.name as categoryName : String,
+          isActive
+    }
+    where isActive = true;
 
 }

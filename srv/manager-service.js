@@ -43,6 +43,11 @@ module.exports = class ManagerService extends cds.ApplicationService {
       "Projects",
       handlers.manager.entities.projects.afterRead,
     );
+    this.after(
+      "READ",
+      "TimeEntries",
+      handlers.manager.entities.timeEntries.afterRead,
+    );
 
     this.before("UPDATE", "TimeEntries", (req) => {
       // Force state transitions only through custom actions
