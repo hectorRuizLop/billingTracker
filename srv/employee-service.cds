@@ -102,8 +102,8 @@ service EmployeeService @(path: '/api/employee')@(requires: [
           project.ID          as project_ID         : UUID,
           project.name        as projectName        : String,
           @readonly month,
-          @readonly year,
-          @readonly rateSnapshot
+          @readonly year         : String,
+          @readonly rateSnapshot : Decimal(15,2)
     };
 
   // Aggregated view: total hours per project for the current employee
@@ -138,7 +138,7 @@ service EmployeeService @(path: '/api/employee')@(requires: [
   }]
   entity MyMonthlySummary {
     key ID         : String;
-        year       : Integer;
+        year       : String;
         month      : Integer;
         totalHours : Decimal;
         entryCount : Integer;
