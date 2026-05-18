@@ -215,15 +215,15 @@ describe("ManagerService", () => {
 
     const cp = data.value.find((p) => p.ID === PROJECT_CP);
     expect(cp).toBeDefined();
-    // Approved = 6h =270 / Submitted = 16h = 720 / Projected = 22h =990
-    expect(parseFloat(cp.projectedTotalHours)).toBe(22);
-    expect(parseFloat(cp.projectedTotalCost)).toBeCloseTo(990, 2);
+    // Approved = 6h =270 / Submitted = 35h =1575 / Projected = 41h =1845
+    expect(parseFloat(cp.projectedTotalHours)).toBe(41);
+    expect(parseFloat(cp.projectedTotalCost)).toBeCloseTo(1845, 2);
     expect(parseFloat(cp.projectedBudgetRemaining)).toBeCloseTo(
-      parseFloat(cp.budget) - 990,
+      parseFloat(cp.budget) - 1845,
       2,
     );
-    expect(parseFloat(cp.submittedHours)).toBe(16);
-    expect(parseFloat(cp.submittedCost)).toBeCloseTo(720, 2);
+    expect(parseFloat(cp.submittedHours)).toBe(35);
+    expect(parseFloat(cp.submittedCost)).toBeCloseTo(1575, 2);
 
     // Category breakdown, approved only, both employees are Junior
     expect(parseFloat(cp.juniorHours)).toBe(6);
@@ -239,9 +239,9 @@ describe("ManagerService", () => {
       (p) => p.ID === "40000000-0000-0000-0000-000000000003",
     );
     expect(mobile).toBeDefined();
-    expect(parseFloat(mobile.projectedTotalHours)).toBe(0);
-    expect(parseFloat(mobile.projectedTotalCost)).toBe(0);
-    expect(parseFloat(mobile.submittedHours)).toBe(0);
+    expect(parseFloat(mobile.projectedTotalHours)).toBe(6.5);
+    expect(parseFloat(mobile.projectedTotalCost)).toBeCloseTo(357.5, 2);
+    expect(parseFloat(mobile.submittedHours)).toBe(6.5);
     expect(parseFloat(mobile.juniorHours)).toBe(0);
   });
 

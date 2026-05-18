@@ -39,12 +39,14 @@ describe("PendingHoursReminder", () => {
     );
     expect(mgr1Entry.subject).toBe("Pending Time Entries for Review - 4/2026");
     expect(mgr1Entry.text).toMatch(/Customer Portal/);
-    expect(mgr1Entry.text).toMatch(/2 submitted time entries/);
+    expect(mgr1Entry.text).toMatch(/5 submitted time entries/);
+    expect(mgr1Entry.text).toMatch(/Sales Mobile App/);
+    expect(mgr1Entry.text).toMatch(/1 submitted time entry/);
 
     const mgr2Entry = outbox.find((o) => o.to === "alejandro.lopez@nubexx.com");
     expect(mgr2Entry.subject).toBe("Pending Time Entries for Review - 4/2026");
     expect(mgr2Entry.text).toMatch(/ERP Migration/);
-    expect(mgr2Entry.text).toMatch(/1 submitted time entry/);
+    expect(mgr2Entry.text).toMatch(/2 submitted time entries/);
   });
 
   test("returns empty result when no submitted entries exist for previous month", async () => {

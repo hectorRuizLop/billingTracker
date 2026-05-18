@@ -240,6 +240,13 @@ describe("TimeEntry Validations", () => {
   });
 
   test("Rejects time entry on a closed project", async () => {
+    // Approve any submitted entries so the project can be closed
+    await cds.run(
+      UPDATE("my.billing.TimeEntries")
+        .set({ status: "A" })
+        .where({ project_ID: PROJECT_MOBILE, status: "S" }),
+    );
+
     await PATCH(
       `/api/manager/Projects/${PROJECT_MOBILE}`,
       { status: "C" },
