@@ -1,0 +1,193 @@
+{
+  "_version": "1.60.0",
+  "sap.app": {
+    "id": "nubexx.billing.manager",
+    "type": "application",
+    "title": "{{appTitle}}",
+    "description": "{{appDescription}}",
+    "i18n": "i18n/i18n.properties",
+    "applicationVersion": {
+      "version": "1.0.0"
+    },
+    "dataSources": {
+      "ManagerService": {
+        "uri": "/api/manager/",
+        "type": "OData",
+        "settings": {
+          "odataVersion": "4.0"
+        }
+      }
+    },
+    "crossNavigation": {
+      "inbounds": {
+        "manager-dashboard": {
+          "semanticObject": "Projects",
+          "action": "manage",
+          "title": "{{appTitle}}",
+          "signature": {
+            "parameters": {},
+            "additionalParameters": "allowed"
+          }
+        }
+      }
+    }
+  },
+  "sap.ui": {
+    "technology": "UI5",
+    "deviceTypes": {
+      "desktop": true,
+      "tablet": true,
+      "phone": true
+    }
+  },
+  "sap.ui5": {
+    "dependencies": {
+      "minUI5Version": "1.120.0",
+      "libs": {
+        "sap.fe.core": {},
+        "sap.fe.templates": {}
+      }
+    },
+    "models": {
+      "i18n": {
+        "type": "sap.ui.model.resource.ResourceModel",
+        "uri": "i18n/i18n.properties"
+      },
+      "": {
+        "dataSource": "ManagerService",
+        "settings": {
+          "synchronizationMode": "None",
+          "operationMode": "Server",
+          "autoExpandSelect": true,
+          "earlyRequests": true
+        }
+      }
+    },
+    "routing": {
+      "routes": [
+        {
+          "pattern": ":?query:",
+          "name": "ProjectsList",
+          "target": "ProjectsList"
+        },
+        {
+          "pattern": "Projects({key}):?query:",
+          "name": "ProjectDetails",
+          "target": "ProjectDetails"
+        },
+        {
+          "pattern": "TimeEntries:?query:",
+          "name": "TimeEntriesList",
+          "target": "TimeEntriesList"
+        },
+        {
+          "pattern": "TimeEntries({key}):?query:",
+          "name": "TimeEntryDetails",
+          "target": "TimeEntryDetails"
+        }
+      ],
+      "targets": {
+        "ProjectsList": {
+          "type": "Component",
+          "id": "ProjectsList",
+          "name": "sap.fe.templates.ListReport",
+          "options": {
+            "settings": {
+              "entitySet": "Projects",
+              "liveMode": true,
+              "variantManagement": "Page",
+              "navigation": {
+                "Projects": {
+                  "detail": {
+                    "route": "ProjectDetails"
+                  }
+                }
+              },
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable",
+                    "multiSelect": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ProjectDetails": {
+          "type": "Component",
+          "id": "ProjectDetails",
+          "name": "sap.fe.templates.ObjectPage",
+          "options": {
+            "settings": {
+              "entitySet": "Projects",
+              "editableHeaderContent": false,
+              "sectionLayout": "Tabs",
+              "controlConfiguration": {
+                "assignments/@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable",
+                    "creationMode": {
+                      "name": "Inline"
+                    }
+                  }
+                },
+                "timeEntries/@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "TimeEntriesList": {
+          "type": "Component",
+          "id": "TimeEntriesList",
+          "name": "sap.fe.templates.ListReport",
+          "options": {
+            "settings": {
+              "entitySet": "TimeEntries",
+              "liveMode": true,
+              "variantManagement": "Page",
+              "navigation": {
+                "TimeEntries": {
+                  "detail": {
+                    "route": "TimeEntryDetails"
+                  }
+                }
+              },
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable",
+                    "multiSelect": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "TimeEntryDetails": {
+          "type": "Component",
+          "id": "TimeEntryDetails",
+          "name": "sap.fe.templates.ObjectPage",
+          "options": {
+            "settings": {
+              "entitySet": "TimeEntries",
+              "editableHeaderContent": false
+            }
+          }
+        }
+      }
+    },
+    "contentDensities": {
+      "compact": true,
+      "cozy": true
+    }
+  },
+  "sap.fiori": {
+    "registrationIds": [],
+    "archeType": "transactional"
+  }
+}

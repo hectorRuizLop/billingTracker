@@ -1,140 +1,243 @@
 namespace my.billing;
-using { cuid, managed } from '@sap/cds/common';
 
-type CategoryCode : String(1) enum {
-  Junior   = 'J';
+using {
+  cuid,
+  managed
+} from '@sap/cds/common';
+
+type CategoryCode        : String(1) enum {
+  Junior = 'J';
   MidLevel = 'M';
-  Senior   = 'S';
-  Lead     = 'L';
+  Senior = 'S';
+  Lead = 'L';
 }
 
-type TimeEntryStatus : String(1) enum {
-  Draft     = 'D';   
-  Submitted = 'S';   
-  Approved  = 'A';   
-  Rejected  = 'R';   
+type BillingStatus       : String(1) enum {
+  Unbilled = 'U';
+  Billed = 'B';
+  Invoiced = 'I';
 }
 
-type ProjectStatus : String(1) enum {
-  Open   = 'O';      
-  Closed = 'C';      
+type TimeEntryStatus     : String(1) enum {
+  Draft = 'D';
+  Submitted = 'S';
+  Approved = 'A';
+  Rejected = 'R';
 }
 
-type UserRole : String(1) enum {
-  Employee = 'E';    
-  Manager  = 'M';    
-  Admin    = 'A';    
+type ProjectStatus       : String(1) enum {
+  Open = 'O';
+  Closed = 'C';
 }
 
-entity Categories : cuid {
-  code        : CategoryCode    @mandatory;
-  name        : String(50)      @mandatory;      
-  rate        : Decimal(10,2)   @mandatory;       
+type UserRole            : String(1) enum {
+  Employee = 'E';
+  Manager = 'M';
+  Admin = 'A';
+}
+
+@AuditLog.Operation: {
+  Insert,
+  Update,
+  Delete
+}
+entity Categories : cuid, managed {
+  code        : CategoryCode   @mandatory;
+  name        : String(50)     @mandatory;
+  rate        : Decimal(14, 4) @mandatory;
   description : String(200);
+  //Slowly changing dimensions
+  validFrom   : Date default '1900-01-01';
+  validTo     : Date default '9999-12-31';
 }
 
+@PersonalData.EntitySemantics: 'DataSubject'
 entity Employees : cuid, managed {
-  firstName   : String(50)      @mandatory;
-  lastName    : String(50)      @mandatory;
-  email       : String(100)     @mandatory;       
-  phone       : String(20);
-  role        : UserRole        default 'E';      
-  isActive    : Boolean         default true;     
+      @PersonalData.FieldSemantics: 'DataSubjectID'
+  key ID              : UUID;
 
+      @PersonalData.IsPotentiallyPersonal
+      firstName       : String(50)  @mandatory;
 
-  category    : Association to Categories;
-  assignments : Association to many ProjectAssignments on assignments.employee = $self;
+      @PersonalData.IsPotentiallyPersonal
+      lastName        : String(50)  @mandatory;
 
-  timeEntries : Association to many TimeEntries on timeEntries.employee = $self;
+      @PersonalData.IsPotentiallyPersonal
+      email           : String(100) @mandatory;
 
-  managedProjects : Association to many Projects on managedProjects.manager = $self;
+      @PersonalData.IsPotentiallyPersonal
+      phone           : String(20);
+      role            : UserRole default 'E';
+      isActive        : Boolean default true;
+      externalId      : String(255);
+
+      category        : Association to Categories;
+      assignments     : Association to many ProjectAssignments
+                          on assignments.employee = $self;
+      timeEntries     : Association to many TimeEntries
+                          on timeEntries.employee = $self;
+      managedProjects : Association to many Projects
+                          on managedProjects.manager = $self;
 }
 
-
+@PersonalData.EntitySemantics: 'DataSubject'
 entity Clients : cuid, managed {
-  name         : String(100)    @mandatory;       
-  email        : String(100)    @mandatory;       
-  phone        : String(20);
-  address      : String(300);
-  taxId        : String(20);                     
-  contactName  : String(100);                     
-  notes        : String(500);
-  isDeleted    : Boolean        default false;
-  deletedAt    : Timestamp;
-  deletedBy    : String;
+      @PersonalData.FieldSemantics: 'DataSubjectID'
+  key ID          : UUID;
 
-  projects     : Association to many Projects on projects.client = $self;
+      @PersonalData.IsPotentiallyPersonal
+      name        : String(100) @mandatory;
+
+      @PersonalData.IsPotentiallyPersonal
+      email       : String(100) @mandatory;
+
+      @PersonalData.IsPotentiallyPersonal
+      phone       : String(20);
+      address     : String(300);
+      taxId       : String(20);
+
+      @PersonalData.IsPotentiallyPersonal
+      contactName : String(100);
+      notes       : String(500);
+      isDeleted   : Boolean default false;
+      deletedAt   : Timestamp;
+      deletedBy   : String;
+
+      projects    : Association to many Projects
+                      on projects.client = $self;
 }
 
 entity Projects : cuid, managed {
-  name         : String(150)    @mandatory;
-  description  : String(500);
-  status       : ProjectStatus  default 'O';      
-  budget       : Decimal(15,2)  @mandatory;      
-  startDate    : Date;
-  endDate      : Date;                           
-  closedAt     : Timestamp;                       
-  closedBy     : String;                          
+  name        : String(150)              @mandatory;
+  description : String(500);
+  status      : ProjectStatus default 'O';
+  budget      : Decimal(15, 2)           @mandatory;
+  startDate   : Date;
+  endDate     : Date;
+  closedAt    : Timestamp;
+  closedBy    : String;
 
-  client       : Association to Clients @mandatory;
-  manager      : Association to Employees @mandatory;
+  client      : Association to Clients   @mandatory;
+  manager     : Association to Employees @mandatory;
 
-  assignments  : Composition of many ProjectAssignments on assignments.project = $self;
-  timeEntries  : Composition of many TimeEntries on timeEntries.project = $self;
+  assignments : Composition of many ProjectAssignments
+                  on assignments.project = $self;
+  timeEntries : Composition of many TimeEntries
+                  on timeEntries.project = $self;
 }
 
 entity ProjectAssignments : cuid, managed {
-  project      : Association to Projects           @mandatory;
-  employee     : Association to Employees          @mandatory;
-  assignedAt   : Date          default $now;
-  isActive     : Boolean       default true;    
-  customRate   : Decimal(10,2); // Allows a manager assign a worker in a project with different tarif                  
-
+  project    : Association to Projects  @mandatory;
+  employee   : Association to Employees @mandatory;
+  assignedAt : Date default $now;
+  isActive   : Boolean default true;
+  removedAt  : Timestamp;
+  removedBy  : String;
+  customRate : Decimal(14, 4); // Allows a manager to assign a worker with a different rate
+  validFrom  : Date default '1900-01-01';
+  validTo    : Date default '9999-12-31';
 }
 
 entity TimeEntries : cuid, managed {
-  date          : Date          @mandatory;        
-  hours         : Decimal(4,2)  @mandatory;        
-  description   : String(500);                     
-
-  status        : TimeEntryStatus default 'D';    
-  reviewedAt    : Timestamp;                      
-  reviewedBy    : String;                          
-  rejectionNote : String(500);                    
-
-  rateSnapshot  : Decimal(10,2);
-
-  employee      : Association to Employees         @mandatory;
-  project       : Association to Projects          @mandatory;
-
-  month         : Integer;                         
-  year          : Integer;                         
-}
-
-
-
-entity AuditLog : cuid {
-  timestamp     : Timestamp     @cds.on.insert: $now;
-  user          : String(100);                    
-  action        : String(20); // CREATE, UPDATE, DELETE
-  entity_name   : String(100);                     
-  entityId      : String(36);                      
-  field         : String(50);                      
-  oldValue      : String(500);
-  newValue      : String(500);
+  date          : Date                     @mandatory;
+  hours         : Decimal(4, 2)            @mandatory;
   description   : String(500);
+
+  status        : TimeEntryStatus default 'D';
+  reviewedAt    : Timestamp;
+  reviewedBy    : String;
+  rejectionNote : String(500);
+
+  rateSnapshot  : Decimal(14, 4);
+  billingStatus : BillingStatus default 'U';
+
+  employee      : Association to Employees @mandatory;
+  project       : Association to Projects  @mandatory;
+
+  month         : Integer;
+  year          : Integer;
 }
 
-entity Notifications : cuid {
-  sentAt         : Timestamp    @cds.on.insert: $now;
-  type           : String(50);                     
-  recipient      : String(100);                  
-  subject        : String(200);
-  body           : LargeString;                   
-  status         : String(1)   default 'P'; // P=Pending, S=Sent, F=Failed
-  errorMessage   : String(500);                    
-  retryCount     : Integer     default 0;         
+type BillingPeriodStatus : String(1) enum {
+  Open = 'O';
+  Closed = 'C';
+  Invoiced = 'I';
+}
 
-  relatedProject  : Association to Projects;
-  relatedEmployee : Association to Employees;
+entity BillingPeriods : cuid, managed {
+  project    : Association to Projects @mandatory;
+  month      : Integer                 @mandatory;
+  year       : Integer                 @mandatory;
+  status     : BillingPeriodStatus default 'O';
+  closedAt   : Timestamp;
+  closedBy   : String;
+  totalCost  : Decimal(19, 4); // Aggregate of rate*hours needs 4 decimals
+  totalHours : Decimal(10, 2);
+}
+
+type InvoiceStatus       : String(1) enum {
+  Draft = 'D';
+  Sent = 'S';
+  Paid = 'P';
+  Cancelled = 'C';
+}
+
+entity Invoices : cuid, managed {
+  invoiceNumber : String(50)             @mandatory;
+  issueDate     : Date                   @mandatory;
+  dueDate       : Date;
+  status        : InvoiceStatus default 'D';
+  currency      : String(3) default 'EUR';
+  taxRate       : Decimal(5, 2);
+  subtotal      : Decimal(19, 4);
+  taxAmount     : Decimal(19, 4);
+  total         : Decimal(19, 4);
+  notes         : String(500);
+  client        : Association to Clients @mandatory;
+  billingPeriod : Association to BillingPeriods;
+  lines         : Composition of many InvoiceLines
+                    on lines.invoice = $self;
+}
+
+entity InvoiceLines : cuid {
+  invoice      : Association to Invoices    @mandatory;
+  timeEntry    : Association to TimeEntries @mandatory;
+  description  : String(500);
+  hours        : Decimal(4, 2);
+  rateSnapshot : Decimal(14, 4);
+  amount       : Decimal(19, 4);
+}
+
+entity Notifications : cuid, managed {
+  recipient : Association to Employees;
+  client    : Association to Clients;
+  type      : String(50) default 'DraftReminder';
+  subject   : String(200);
+  message   : String(1000);
+  sentAt    : Timestamp;
+  status    : String(1) default 'P'; // P=Pending, S=Sent, F=Failed
+  isRead    : Boolean default false;
+}
+
+entity EmailOutbox : cuid, managed {
+  to            : String(100) @mandatory;
+  ![from]       : String(100) @mandatory;
+  subject       : String(200) @mandatory;
+  text          : LargeString @mandatory;
+  status        : String(1) default 'P'; // P=Pending, S=Sent, F=Failed
+  attempts      : Integer default 0;
+  maxAttempts   : Integer default 3;
+  error         : String(500);
+  referenceId   : UUID;
+  referenceType : String(50);
+  payload       : LargeString; // JSON context for finalization
+  recipient_ID  : UUID;
+  client_ID     : UUID;
+}
+
+entity JobLocks : cuid {
+  jobName   : String(50) @mandatory;
+  lockedAt  : Timestamp;
+  lockedBy  : String(100);
+  expiresAt : Timestamp;
 }

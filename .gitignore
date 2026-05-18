@@ -6,6 +6,9 @@ gen/
 .cdsrc-private.json
 default-*.json
 *.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.cds.bak
 
 # MTA
 mta_archives/
@@ -17,3 +20,13 @@ mta_archives/
 
 # @cap-js/cds-typer
 @cds-models
+
+# Environment variables (secrets)
+.env
+
+# Manual integration/smoke-test scripts — not part of the Jest suite
+scripts/
+
+# SendPulse token disk cache (written at runtime, contains a short-lived access token)
+/tmp/sendpulse-token.json
+/tmp/sendpulse-token.json.tmp

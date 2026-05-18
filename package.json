@@ -2,22 +2,173 @@
   "name": "billing-tracker",
   "version": "1.0.0",
   "dependencies": {
+    "@cap-js/audit-logging": "^1",
     "@cap-js/hana": "^2",
     "@sap/cds": "^9",
-    "@sap/xssec": "^4"
+    "@sap/xssec": "^4",
+    "node-cron": "^4.2.1"
   },
   "devDependencies": {
+    "@cap-js/cds-test": "^0.4.1",
     "@cap-js/sqlite": "^2",
-    "@sap/cds-dk": "^9"
+    "@sap/cds-dk": "^9",
+    "@sap/cds-lsp": "^9.8.0",
+    "@sap/eslint-plugin-cds": "^4",
+    "eslint": "^10",
+    "jest": "^29",
+    "prettier": "^3.8.3"
   },
   "scripts": {
-    "start": "cds-serve"
+    "start": "cds-serve",
+    "test": "jest --forceExit",
+    "test:cds": "node test/run-cds-test.js",
+    "format": "format-cds -f",
+    "arreglar": "format-cds -f && eslint --fix srv/ test/ && prettier --write \"srv/**/*.js\" \"test/**/*.js\"",
+    "lint": "eslint srv/ test/",
+    "build": "npx cds build --production"
   },
   "private": true,
   "cds": {
     "requires": {
+      "audit-log": {
+        "kind": "audit-log-to-console"
+      },
+      "[test]": {
+        "db": {
+          "kind": "sqlite",
+          "credentials": {
+            "url": ":memory:"
+          }
+        },
+        "audit-log": {
+          "kind": "audit-log-to-console"
+        },
+        "auth": {
+          "kind": "mocked",
+          "users": {
+            "20000000-0000-0000-0000-000000000001": {
+              "password": "pass",
+              "roles": [
+                "Employee"
+              ],
+              "attr": {
+                "email": "hector.ruiz@nubexx.com"
+              }
+            },
+            "20000000-0000-0000-0000-000000000002": {
+              "password": "pass",
+              "roles": [
+                "Employee"
+              ],
+              "attr": {
+                "email": "minerva.jimenez@nubexx.com"
+              }
+            },
+            "20000000-0000-0000-0000-000000000003": {
+              "password": "pass",
+              "roles": [
+                "Manager",
+                "Employee"
+              ],
+              "attr": {
+                "email": "alejandro.martinez@nubexx.com"
+              }
+            },
+            "20000000-0000-0000-0000-000000000004": {
+              "password": "pass",
+              "roles": [
+                "Manager",
+                "Employee"
+              ],
+              "attr": {
+                "email": "alejandro.lopez@nubexx.com"
+              }
+            },
+            "20000000-0000-0000-0000-000000000005": {
+              "password": "pass",
+              "roles": [
+                "Admin",
+                "Manager",
+                "Employee"
+              ],
+              "attr": {
+                "email": "jaime.ojeda@nubexx.com"
+              }
+            }
+          }
+        }
+      },
       "[production]": {
-        "auth": "xsuaa"
+        "auth": "xsuaa",
+        "db": {
+          "kind": "hana"
+        },
+        "audit-log": {
+          "kind": "audit-log",
+          "outbox": true
+        }
+      },
+      "[development]": {
+        "db": {
+          "kind": "sqlite",
+          "credentials": {
+            "url": "db.sqlite"
+          }
+        },
+        "auth": {
+          "kind": "mocked",
+          "users": {
+            "20000000-0000-0000-0000-000000000001": {
+              "password": "pass",
+              "roles": [
+                "Employee"
+              ],
+              "attr": {
+                "email": "hector.ruiz@nubexx.com"
+              }
+            },
+            "20000000-0000-0000-0000-000000000002": {
+              "password": "pass",
+              "roles": [
+                "Employee"
+              ],
+              "attr": {
+                "email": "minerva.jimenez@nubexx.com"
+              }
+            },
+            "20000000-0000-0000-0000-000000000003": {
+              "password": "pass",
+              "roles": [
+                "Manager",
+                "Employee"
+              ],
+              "attr": {
+                "email": "alejandro.martinez@nubexx.com"
+              }
+            },
+            "20000000-0000-0000-0000-000000000004": {
+              "password": "pass",
+              "roles": [
+                "Manager",
+                "Employee"
+              ],
+              "attr": {
+                "email": "alejandro.lopez@nubexx.com"
+              }
+            },
+            "20000000-0000-0000-0000-000000000005": {
+              "password": "pass",
+              "roles": [
+                "Admin",
+                "Manager",
+                "Employee"
+              ],
+              "attr": {
+                "email": "jaime.ojeda@nubexx.com"
+              }
+            }
+          }
+        }
       }
     }
   }

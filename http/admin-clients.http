@@ -1,0 +1,44 @@
+@baseUrl = http://localhost:4004/api/admin
+@adminUser = 20000000-0000-0000-0000-000000000005
+@adminPass = pass
+
+GET {{baseUrl}}/Clients
+Authorization: Basic {{adminUser}} {{adminPass}}
+
+###
+# Create client
+POST {{baseUrl}}/Clients
+Authorization: Basic {{adminUser}} {{adminPass}}
+Content-Type: application/json
+
+{
+  "name": "New Client SA",
+  "email": "newclient@nubexx.com",
+  "phone": "+34 678901234",
+  "address": "Street Street",
+  "taxId": "489289329",
+  "contactName": "Nombre Cliente",
+  "notes": "Client"
+}
+
+###
+# Without name
+POST {{baseUrl}}/Clients
+Authorization: Basic {{adminUser}} {{adminPass}}
+Content-Type: application/json
+
+{
+  "name": "",
+  "email": "contacto@test.com"
+}
+
+###
+# Without nubexx.com
+POST {{baseUrl}}/Clients
+Authorization: Basic {{adminUser}} {{adminPass}}
+Content-Type: application/json
+
+{
+  "name": "Not Client",
+  "email": "notclient@random.com"
+}
