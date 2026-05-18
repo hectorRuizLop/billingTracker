@@ -102,8 +102,9 @@ service EmployeeService @(path: '/api/employee')@(requires: [
           project.ID          as project_ID         : UUID,
           project.name        as projectName        : String,
           @readonly month,
-          @readonly year         : String,
-          @readonly rateSnapshot : Decimal(15,2)
+          @readonly year                            : String,
+          @readonly rateSnapshot                    : Decimal(15, 2),
+          virtual null        as statusCriticality  : Integer
     };
 
   // Aggregated view: total hours per project for the current employee
