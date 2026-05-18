@@ -54,23 +54,18 @@ Authorization: Basic {{managerUser1}} {{pass}}
 
 
 ### Approve a submitted time entry
-POST {{baseUrl}}/approveTimeEntry
+POST {{baseUrl}}/TimeEntries(60000000-0000-0000-0000-000000000001)/approveTimeEntry
 Authorization: Basic {{managerUser1}} {{pass}}
 Content-Type: application/json
-
-{
-  "timeEntryId": "60000000-0000-0000-0000-000000000001"
-}
 
 ###
 
 ### Reject a submitted time entry with justification
-POST {{baseUrl}}/rejectTimeEntry
+POST {{baseUrl}}/TimeEntries(60000000-0000-0000-0000-000000000005)/rejectTimeEntry
 Authorization: Basic {{managerUser1}} {{pass}}
 Content-Type: application/json
 
 {
-  "timeEntryId": "60000000-0000-0000-0000-000000000005",
   "rejectionNote": "This work was logged twice by mistake."
 }
 

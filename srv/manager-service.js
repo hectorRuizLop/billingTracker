@@ -32,10 +32,12 @@ module.exports = class ManagerService extends cds.ApplicationService {
     );
     this.on(
       "approveTimeEntry",
+      "TimeEntries",
       handlers.manager.actions.timeEntries.approveTimeEntry,
     );
     this.on(
       "rejectTimeEntry",
+      "TimeEntries",
       handlers.manager.actions.timeEntries.rejectTimeEntry,
     );
     this.after(

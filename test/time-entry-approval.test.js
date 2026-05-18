@@ -70,8 +70,8 @@ describe("Time Entry Approval and Rejection", () => {
 
     // 3. Manager approves
     const { status } = await POST(
-      `${MGR_BASE}/approveTimeEntry`,
-      { timeEntryId: created.ID },
+      `${MGR_BASE}/TimeEntries(${created.ID})/approveTimeEntry`,
+      {},
       { auth: MGR1 },
     );
     expect(status).toBe(200);
@@ -101,8 +101,8 @@ describe("Time Entry Approval and Rejection", () => {
     );
 
     const { status, data } = await POST(
-      `${MGR_BASE}/approveTimeEntry`,
-      { timeEntryId: created.ID },
+      `${MGR_BASE}/TimeEntries(${created.ID})/approveTimeEntry`,
+      {},
       { auth: MGR1, validateStatus: () => true },
     );
     expect(status).toBe(400);
@@ -130,9 +130,8 @@ describe("Time Entry Approval and Rejection", () => {
     );
 
     const { status } = await POST(
-      `${MGR_BASE}/rejectTimeEntry`,
+      `${MGR_BASE}/TimeEntries(${created.ID})/rejectTimeEntry`,
       {
-        timeEntryId: created.ID,
         rejectionNote: "This work was not authorized",
       },
       { auth: MGR1 },
@@ -170,8 +169,8 @@ describe("Time Entry Approval and Rejection", () => {
     );
 
     const { status, data } = await POST(
-      `${MGR_BASE}/rejectTimeEntry`,
-      { timeEntryId: created.ID, rejectionNote: "too short" },
+      `${MGR_BASE}/TimeEntries(${created.ID})/rejectTimeEntry`,
+      { rejectionNote: "too short" },
       { auth: MGR1, validateStatus: () => true },
     );
     expect(status).toBe(400);
