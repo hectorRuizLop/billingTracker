@@ -10,6 +10,12 @@ const cds = require("@sap/cds");
  * When credentials are missing (dev / test / local), emails are logged to
  * the console instead of failing so the application remains runnable.
  *
+ * Sandbox Mode:
+ *   Set EMAIL_SANDBOX=true and EMAIL_SANDBOX_RECIPIENTS=email1,email2
+ *   to redirect ALL outgoing emails to those addresses. This is useful
+ *   for testing with real SendPulse credentials without risking emails
+ *   landing in real customer/employee inboxes.
+ *
  * Tokens are cached only in-memory
  */
 class EmailSender {
@@ -17,10 +23,18 @@ class EmailSender {
     userId = process.env.SENDPULSE_USER_ID,
     secret = process.env.SENDPULSE_SECRET,
     fromName = "Billing Tracker",
+    sandboxMode =
+      process.env.EMAIL_SANDBOX === "true" ||
+      process.env.EMAIL_SANDBOX === "1",
+    sandboxRecipients = process.env.EMAIL_SANDBOX_RECIPIENTS,
   } = {}) {
     this._userId = userId;
     this._secret = secret;
     this._fromName = fromName;
+    this._sandboxMode = sandboxMode;
+    this._sandboxRecipients = sandboxRecipients
+      ? sandboxRecipients.split(",").map((e) => e.trim()).filter(Boolean)
+      : [];
     this._token = null;
     // Track expiry in memory so we can proactively refresh before the next send
     this._tokenExpiresAt = null;
@@ -77,16 +91,47 @@ class EmailSender {
       return { simulated: true };
     }
 
+    const log = cds.log("email");
+    const originalTo = to;
+    let actualSubject = subject;
+    let actualText = text;
+    let recipients = [{ name: to, email: to }];
+
+    if (this._sandboxMode) {
+      if (this._sandboxRecipients.length > 0) {
+        to = this._sandboxRecipients.join(", ");
+        recipients = this._sandboxRecipients.map((r) => ({
+          name: r,
+          email: r,
+        }));
+        actualSubject = `[SANDBOX → ${originalTo}] ${subject}`;
+        actualText =
+          ` SANDBOX MODE  This email was redirected from its original recipient.\n\n` +
+          `Original recipient: ${originalTo}\n` +
+          `Sandbox recipients: ${this._sandboxRecipients.join(", ")}\n` +
+          `---\n\n${text}`;
+
+        log.warn(
+          `[SANDBOX] Email to "${originalTo}" redirected to: ${this._sandboxRecipients.join(", ")}`,
+        );
+      } else {
+        log.warn(
+          `[SANDBOX] EMAIL_SANDBOX is active but EMAIL_SANDBOX_RECIPIENTS is empty. ` +
+            `Email will be sent to the original recipient: ${originalTo}`,
+        );
+      }
+    }
+
     const token = await this._ensureToken();
 
     const email = {
       email: {
-        subject,
-        text,
+        subject: actualSubject,
+        text: actualText,
         // Use the human-readable sender name, not the raw email address,
         // so mail clients display "Billing Tracker" instead of the address string
         from: { name: this._fromName, email: from },
-        to: [{ name: to, email: to }],
+        to: recipients,
       },
     };
 
@@ -111,7 +156,7 @@ class EmailSender {
     }
 
     const answer = await res.json();
-    return { sent: true, answer };
+    return { sent: true, originalTo, redirectedTo: this._sandboxMode ? this._sandboxRecipients : null, answer };
   }
 }
 

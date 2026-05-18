@@ -10,6 +10,14 @@
  *   SENDPULSE_USER_ID=<oauth2-client-id>
  *   SENDPULSE_SECRET=<oauth2-client-secret>
  *   EMAIL_FROM=<verified-sender>
+ *
+ * Sandbox Mode (recommended for testers):
+ *   EMAIL_SANDBOX=true
+ *   EMAIL_SANDBOX_RECIPIENTS=tester1@example.com, tester2@example.com
+ *
+ * When sandbox is active, all emails are redirected to the listed recipients
+ * with the original destination shown in the subject, so testers can verify
+ * real SendPulse delivery without risking emails to production addresses.
  */
 
 process.env.NODE_ENV = "test";

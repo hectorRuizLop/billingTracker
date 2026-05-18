@@ -95,7 +95,17 @@ The backend exposes **three role-based CAP services**:
 |----------|-----------|-------------|
 | `SENDPULSE_USER_ID` | Production only | SendPulse user ID |
 | `SENDPULSE_SECRET` | Production only | SendPulse API secret |
+| `EMAIL_FROM` | Production only | Verified sender address |
 | `CF_INSTANCE_GUID` | Production only | CF instance GUID (used by distributed locking) |
+
+### Email Sandbox Mode (Testing)
+
+| Variable | Required | Description |
+|----------|-----------|-------------|
+| `EMAIL_SANDBOX` | No | Set to `true` to redirect all emails to safe recipients |
+| `EMAIL_SANDBOX_RECIPIENTS` | No | Comma-separated list of test recipient addresses |
+
+When `EMAIL_SANDBOX=true`, every outgoing email is sent to the sandbox recipients instead of the real destination. The subject is prefixed with `[SANDBOX → original@email.com]` so testers can verify delivery without risk.
 
 In development, if `SENDPULSE_USER_ID` is not set, `EmailSender` operates in simulation mode (logs to console only).
 
