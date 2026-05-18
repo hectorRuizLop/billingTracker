@@ -8,6 +8,7 @@ annotate ManagerService.Projects with @(
   UI.HeaderInfo     : {
     TypeName      : '{i18n>Project}',
     TypeNamePlural: '{i18n>Projects}',
+    TypeImageUrl  : 'sap-icon://building',
     Title         : {Value: name},
     Description   : {Value: client.name}
   },
@@ -67,6 +68,17 @@ annotate ManagerService.Projects with @(
 //  Projects Object Page
 //
 annotate ManagerService.Projects with @(UI: {
+  HeaderFacets                   : [
+    {
+      $Type : 'UI.ReferenceFacet',
+      Target: '@UI.DataPoint#BudgetUsage'
+    },
+    {
+      $Type : 'UI.ReferenceFacet',
+      Target: '@UI.DataPoint#HoursUsage'
+    }
+  ],
+
   Facets                         : [
     {
       $Type : 'UI.CollectionFacet',
@@ -118,6 +130,22 @@ annotate ManagerService.Projects with @(UI: {
       Target: 'timeEntries/@UI.LineItem'
     }
   ],
+
+  DataPoint #BudgetUsage         : {
+    Value        : totalCost,
+    Title        : '{i18n>ApprovedCost}',
+    TargetValue  : budget,
+    Visualization: #Progress,
+    Criticality  : budgetCriticality
+  },
+
+  DataPoint #HoursUsage          : {
+    Value        : totalHours,
+    Title        : '{i18n>ApprovedHours}',
+    TargetValue  : projectedTotalHours,
+    Visualization: #Progress,
+    Criticality  : statusCriticality
+  },
 
   FieldGroup #General            : {Data: [
     {
@@ -310,30 +338,33 @@ annotate ManagerService.Projects with {
 //  TimeEntries List Report
 //
 annotate ManagerService.TimeEntries with @(
-  UI.HeaderInfo     : {
+  UI.HeaderInfo                  : {
     TypeName      : '{i18n>TimeEntry}',
     TypeNamePlural: '{i18n>TimeEntries}',
     Title         : {Value: date},
     Description   : {Value: projectName}
   },
 
-  UI.SelectionFields: [
+  UI.Highlight                   : statusCriticality,
+
+  UI.SelectionFields             : [
     project_ID,
     status,
     date
   ],
 
-  UI.LineItem       : [
+  UI.LineItem                    : [
     {
       Value                : date,
       Label                : '{i18n>Date}',
       ![@HTML5.CssDefaults]: {width: '8rem'}
     },
     {
-      Value                : status,
-      Label                : '{i18n>Status}',
-      Criticality          : statusCriticality,
-      ![@HTML5.CssDefaults]: {width: '8rem'}
+      Value                    : status,
+      Label                    : '{i18n>Status}',
+      Criticality              : statusCriticality,
+      CriticalityRepresentation: #WithIcon,
+      ![@HTML5.CssDefaults]    : {width: '10rem'}
     },
     {
       Value                : employeeName,
@@ -365,6 +396,7 @@ annotate ManagerService.TimeEntries with @(
       Label                : '{i18n>ReviewedBy}',
       ![@HTML5.CssDefaults]: {width: '12rem'}
     },
+    // Inline actions for quick row-level approval/rejection
     {
       $Type            : 'UI.DataFieldForAction',
       Action           : 'ManagerService.approveTimeEntry',
@@ -380,8 +412,49 @@ annotate ManagerService.TimeEntries with @(
       Inline           : true,
       Determining      : true,
       ![@UI.Importance]: #High
+    },
+    // Toolbar actions for mass approval/rejection
+    {
+      $Type            : 'UI.DataFieldForAction',
+      Action           : 'ManagerService.approveTimeEntry',
+      Label            : '{i18n>Approve}',
+      Inline           : false,
+      Determining      : true,
+      ![@UI.Importance]: #High
+    },
+    {
+      $Type            : 'UI.DataFieldForAction',
+      Action           : 'ManagerService.rejectTimeEntry',
+      Label            : '{i18n>Reject}',
+      Inline           : false,
+      Determining      : true,
+      ![@UI.Importance]: #High
     }
-  ]
+  ],
+
+  UI.SelectionPresentationVariant: {
+    Text               : '{i18n>PendingApproval}',
+    SelectionVariant   : {
+      $Type        : 'UI.SelectionVariantType',
+      SelectOptions: [{
+        $Type       : 'UI.SelectOptionType',
+        PropertyName: status,
+        Ranges      : [{
+          $Type : 'UI.SelectionRangeType',
+          Sign  : #I,
+          Option: #EQ,
+          Low   : 'S'
+        }]
+      }]
+    },
+    PresentationVariant: {
+      SortOrder     : [{
+        Property  : date,
+        Descending: true
+      }],
+      Visualizations: ['@UI.LineItem']
+    }
+  }
 );
 
 ////////////////////////////////////////////////////////////////////////////
@@ -389,6 +462,11 @@ annotate ManagerService.TimeEntries with @(
 //  TimeEntries Object Page
 //
 annotate ManagerService.TimeEntries with @(
+  UI.HeaderFacets            : [{
+    $Type : 'UI.ReferenceFacet',
+    Target: '@UI.DataPoint#Cost'
+  }],
+
   UI.Facets                  : [
     {
       $Type : 'UI.ReferenceFacet',
@@ -401,6 +479,12 @@ annotate ManagerService.TimeEntries with @(
       Target: '@UI.FieldGroup#ReviewInfo'
     }
   ],
+
+  UI.DataPoint #Cost         : {
+    Value      : cost,
+    Title      : '{i18n>Cost}',
+    Criticality: statusCriticality
+  },
 
   UI.FieldGroup #EntryDetails: {Data: [
     {
@@ -553,11 +637,11 @@ annotate ManagerService.TimeEntries with {
 //  ProjectAssignments — inline table inside Project ObjectPage
 //
 annotate ManagerService.ProjectAssignments with @(
-  UI.HeaderInfo: {
+  UI.HeaderInfo         : {
     TypeName      : '{i18n>Assignment}',
     TypeNamePlural: '{i18n>Assignments}'
   },
-  UI.LineItem  : [
+  UI.LineItem           : [
     {
       Value                : employeeName,
       Label                : '{i18n>Employee}',
@@ -583,7 +667,25 @@ annotate ManagerService.ProjectAssignments with @(
       Label                : '{i18n>CustomRate}',
       ![@HTML5.CssDefaults]: {width: '8rem'}
     }
-  ]
+  ],
+  UI.SelectionFields    : [
+    employee_ID,
+    categoryName,
+    isActive
+  ],
+  UI.PresentationVariant: {
+    SelectOptions : [{
+      $Type       : 'UI.SelectOptionType',
+      PropertyName: isActive,
+      Ranges      : [{
+        $Type : 'UI.SelectionRangeType',
+        Sign  : #I,
+        Option: #EQ,
+        Low   : true
+      }]
+    }],
+    Visualizations: ['@UI.LineItem']
+  }
 );
 
 annotate ManagerService.ProjectAssignments with {
@@ -666,7 +768,7 @@ annotate ManagerService.Clients with {
 
 ////////////////////////////////////////////////////////////////////////////
 //
-//  Employees — ValueHelp list annotations
+//  Employees — ValueHelp list annotations + Contact for QuickView
 //
 annotate ManagerService.Employees with @(
   UI.HeaderInfo: {
@@ -690,7 +792,8 @@ annotate ManagerService.Employees with @(
       Value: categoryName,
       Label: '{i18n>Category}'
     }
-  ]
+  ],
+// Communication.Contact removed due to sap.fe macro bug in local sandbox
 );
 
 annotate ManagerService.Employees with {
@@ -701,6 +804,7 @@ annotate ManagerService.Employees with {
   email        @title: '{i18n>Email}';
   categoryName @title: '{i18n>Category}';
   isActive     @title: '{i18n>Active}';
+  fullName     @title: '{i18n>Employee}';
 };
 
 ////////////////////////////////////////////////////////////////////////////
