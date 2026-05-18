@@ -20,7 +20,9 @@ class PendingHoursReminder {
     const instanceId = `${this._jobName}-${process.pid}-${Date.now()}`;
     const hasLock = await acquireLock(this._jobName, instanceId, 30);
     if (!hasLock) {
-      cds.log("pending-hours-reminder").info("Job already running on another instance — skipping.");
+      cds
+        .log("pending-hours-reminder")
+        .info("Job already running on another instance — skipping.");
       return { created: 0, managers: [] };
     }
 
@@ -34,7 +36,7 @@ class PendingHoursReminder {
   async _execute(now = new Date()) {
     const { year, month } = this._getPreviousMonth(now);
 
-    const { TimeEntries, Projects, Employees, EmailOutbox } = cds.entities("my.billing");
+    const { TimeEntries, Projects, Employees } = cds.entities("my.billing");
 
     const entries = await SELECT.from(TimeEntries)
       .where({ status: "S", year, month })
@@ -122,10 +124,9 @@ class PendingHoursReminder {
 
         createdManagers.push(manager.email);
       } catch (err) {
-        cds.log("pending-hours-reminder").error(
-          `Failed to queue reminder for ${manager.email}`,
-          err,
-        );
+        cds
+          .log("pending-hours-reminder")
+          .error(`Failed to queue reminder for ${manager.email}`, err);
       }
     }
 

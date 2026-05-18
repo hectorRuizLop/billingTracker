@@ -387,8 +387,12 @@ describe("MonthlyInvoiceJob", () => {
 
     expect(result.created).toBe(1);
 
-    const failingSend = jest.fn().mockRejectedValue(new Error("SendGrid error"));
-    const processor = new OutboxProcessor({ emailSender: { send: failingSend } });
+    const failingSend = jest
+      .fn()
+      .mockRejectedValue(new Error("SendGrid error"));
+    const processor = new OutboxProcessor({
+      emailSender: { send: failingSend },
+    });
     await processor.processPending();
 
     expect(failingSend).toHaveBeenCalledTimes(1);
@@ -578,9 +582,7 @@ describe("MonthlyInvoiceJob", () => {
     );
     expect(outbox.length).toBe(2);
 
-    const techCorpEntry = outbox.find(
-      (o) => o.to === "contacto@techcorp.mx",
-    );
+    const techCorpEntry = outbox.find((o) => o.to === "contacto@techcorp.mx");
     expect(techCorpEntry.text).toMatch(/Customer Portal/);
 
     const dataSoftEntry = outbox.find((o) => o.to === "info@datasoft.io");

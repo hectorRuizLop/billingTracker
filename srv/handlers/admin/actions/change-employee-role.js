@@ -21,7 +21,9 @@ async function changeEmployeeRole(req) {
     );
 
   return await cds.tx(async (tx) => {
-    const employee = await tx.run(SELECT.one.from(Employees).where({ ID: employeeId }));
+    const employee = await tx.run(
+      SELECT.one.from(Employees).where({ ID: employeeId }),
+    );
     if (!employee) return req.error(404, "Employee not found");
 
     const update = { role: newRole };

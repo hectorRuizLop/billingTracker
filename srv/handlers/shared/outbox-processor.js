@@ -25,7 +25,8 @@ class OutboxProcessor {
   }
 
   async _finalizeInvoice(referenceId, payload) {
-    const { Invoices, TimeEntries, BillingPeriods } = cds.entities("my.billing");
+    const { Invoices, TimeEntries, BillingPeriods } =
+      cds.entities("my.billing");
 
     const ctx = payload ? JSON.parse(payload) : {};
     const { entryIds, projectsData, year, month } = ctx;
@@ -96,7 +97,8 @@ class OutboxProcessor {
 
       // Map technical reference types to human-readable notification types
       const notificationType =
-        entry.referenceType === "InvoiceNew" || entry.referenceType === "InvoiceRetry"
+        entry.referenceType === "InvoiceNew" ||
+        entry.referenceType === "InvoiceRetry"
           ? "InvoiceSent"
           : entry.referenceType || "Email";
 
@@ -127,15 +129,18 @@ class OutboxProcessor {
           .set({
             status,
             attempts,
-            error: err.message?.substring(0, 500) || String(err).substring(0, 500),
+            error:
+              err.message?.substring(0, 500) || String(err).substring(0, 500),
           })
           .where({ ID: entry.ID }),
       );
 
-      cds.log("outbox-processor").error(
-        `Email outbox entry ${entry.ID} failed (attempt ${attempts}/${maxAttempts}):`,
-        err,
-      );
+      cds
+        .log("outbox-processor")
+        .error(
+          `Email outbox entry ${entry.ID} failed (attempt ${attempts}/${maxAttempts}):`,
+          err,
+        );
 
       return false;
     }
@@ -145,9 +150,7 @@ class OutboxProcessor {
     const { EmailOutbox } = cds.entities("my.billing");
 
     const candidates = await cds.run(
-      SELECT.from(EmailOutbox)
-        .where({ status: "P" })
-        .limit(limit),
+      SELECT.from(EmailOutbox).where({ status: "P" }).limit(limit),
     );
 
     const pending = (candidates || []).filter(
@@ -192,7 +195,9 @@ class OutboxProcessor {
         log.error("Outbox processor loop error:", err);
       }
 
-      await new Promise((resolve) => setTimeout(resolve, this._pollIntervalMs));
+      await new Promise((resolve) =>
+        global.setTimeout(resolve, this._pollIntervalMs),
+      );
     }
   }
 

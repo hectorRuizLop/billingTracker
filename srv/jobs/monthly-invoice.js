@@ -22,7 +22,9 @@ class MonthlyInvoiceJob {
     const instanceId = `${this._jobName}-${process.pid}-${Date.now()}`;
     const hasLock = await acquireLock(this._jobName, instanceId, 60);
     if (!hasLock) {
-      cds.log("monthly-invoice").info("Job already running on another instance — skipping.");
+      cds
+        .log("monthly-invoice")
+        .info("Job already running on another instance — skipping.");
       return { created: 0, clients: [] };
     }
 

@@ -62,7 +62,8 @@ async function rejectEntries(req, timeEntryIds, rejectionNote) {
 }
 
 async function approveTimeEntry(req) {
-  const timeEntryId = req.params?.[0]?.ID || req.params?.[0] || req.data?.timeEntryId;
+  const timeEntryId =
+    req.params?.[0]?.ID || req.params?.[0] || req.data?.timeEntryId;
   const { TimeEntries, Projects } = cds.entities("my.billing");
 
   const entry = await SELECT.one.from(TimeEntries).where({ ID: timeEntryId });
@@ -102,7 +103,8 @@ async function approveTimeEntry(req) {
 }
 
 async function rejectTimeEntry(req) {
-  const timeEntryId = req.params?.[0]?.ID || req.params?.[0] || req.data?.timeEntryId;
+  const timeEntryId =
+    req.params?.[0]?.ID || req.params?.[0] || req.data?.timeEntryId;
   const { rejectionNote } = req.data;
   const rejectedCount = await rejectEntries(req, [timeEntryId], rejectionNote);
   if (!rejectedCount) return;

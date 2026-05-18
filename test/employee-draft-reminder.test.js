@@ -49,7 +49,9 @@ describe("EmployeeDraftReminder", () => {
     );
     expect(outbox.length).toBe(1);
     expect(outbox[0].to).toBe("minerva.jimenez@nubexx.com");
-    expect(outbox[0].subject).toBe("Reminder: Finalize Your Timesheet - 4/2026");
+    expect(outbox[0].subject).toBe(
+      "Reminder: Finalize Your Timesheet - 4/2026",
+    );
   });
 
   test("returns empty result when no draft entries exist for current month", async () => {

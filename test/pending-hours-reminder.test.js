@@ -41,9 +41,7 @@ describe("PendingHoursReminder", () => {
     expect(mgr1Entry.text).toMatch(/Customer Portal/);
     expect(mgr1Entry.text).toMatch(/2 submitted time entries/);
 
-    const mgr2Entry = outbox.find(
-      (o) => o.to === "alejandro.lopez@nubexx.com",
-    );
+    const mgr2Entry = outbox.find((o) => o.to === "alejandro.lopez@nubexx.com");
     expect(mgr2Entry.subject).toBe("Pending Time Entries for Review - 4/2026");
     expect(mgr2Entry.text).toMatch(/ERP Migration/);
     expect(mgr2Entry.text).toMatch(/1 submitted time entry/);
@@ -166,9 +164,7 @@ describe("PendingHoursReminder", () => {
         referenceType: "PendingHoursReminder",
       }),
     );
-    expect(outbox[0].subject).toBe(
-      "Pending Time Entries for Review - 12/2025",
-    );
+    expect(outbox[0].subject).toBe("Pending Time Entries for Review - 12/2025");
 
     await cds.run(
       DELETE.from("my.billing.TimeEntries").where({

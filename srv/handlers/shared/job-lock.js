@@ -12,7 +12,11 @@ const cds = require("@sap/cds");
 
 const DEFAULT_LOCK_TTL_MINUTES = 30;
 
-async function acquireLock(jobName, instanceId, ttlMinutes = DEFAULT_LOCK_TTL_MINUTES) {
+async function acquireLock(
+  jobName,
+  instanceId,
+  ttlMinutes = DEFAULT_LOCK_TTL_MINUTES,
+) {
   const { JobLocks } = cds.entities("my.billing");
   const now = new Date();
   const expiresAt = new Date(now.getTime() + ttlMinutes * 60000).toISOString();
@@ -49,7 +53,11 @@ async function acquireLock(jobName, instanceId, ttlMinutes = DEFAULT_LOCK_TTL_MI
     return true;
   } catch (err) {
     // Unique constraint violation, another instance got there first
-    if (err.code === "SQLITE_CONSTRAINT_UNIQUE" || err.code === 301 || err.statusCode === 301) {
+    if (
+      err.code === "SQLITE_CONSTRAINT_UNIQUE" ||
+      err.code === 301 ||
+      err.statusCode === 301
+    ) {
       return false;
     }
     throw err;

@@ -57,7 +57,11 @@ class EmailSender {
   async _ensureToken() {
     // Re-check in-memory expiry on every call so a long-running process
     // proactively refreshes before the token actually expires at the API
-    if (this._token && this._tokenExpiresAt && this._tokenExpiresAt > new Date()) {
+    if (
+      this._token &&
+      this._tokenExpiresAt &&
+      this._tokenExpiresAt > new Date()
+    ) {
       return this._token;
     }
     // In memory token is gone or expired fetch a fresh one

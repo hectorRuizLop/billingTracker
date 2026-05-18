@@ -1,12 +1,13 @@
 "use strict";
 
+const cds = require("@sap/cds");
 const { resolveRateSnapshot } = require("../../shared/resolve-rate-snapshot");
 
 const STATUS_CRITICALITY = {
-  D: 0, // Draft  
+  D: 0, // Draft
   S: 2, // Submitted
-  A: 3, // Approved 
-  R: 1, // Rejected 
+  A: 3, // Approved
+  R: 1, // Rejected
 };
 
 async function beforeCreate(req) {
@@ -39,15 +40,19 @@ async function beforeCreate(req) {
 async function afterRead(results, _req) {
   if (!results) return;
   const entries = Array.isArray(results) ? results : [results];
-  
+
   // Fetch all unique UUIDs from the reviewedBy property
-  const reviewerIds = [...new Set(entries.filter(e => e.reviewedBy).map(e => e.reviewedBy))];
+  const reviewerIds = [
+    ...new Set(entries.filter((e) => e.reviewedBy).map((e) => e.reviewedBy)),
+  ];
   const reviewerMap = {};
-  
+
   // Perform a single batch query to Employees to resolve the UUIDs into full names
   if (reviewerIds.length > 0) {
     const { Employees } = cds.entities("my.billing");
-    const reviewers = await SELECT.from(Employees).where({ externalId: { in: reviewerIds } });
+    const reviewers = await SELECT.from(Employees).where({
+      externalId: { in: reviewerIds },
+    });
     for (const r of reviewers) {
       reviewerMap[r.externalId] = `${r.firstName} ${r.lastName}`;
     }

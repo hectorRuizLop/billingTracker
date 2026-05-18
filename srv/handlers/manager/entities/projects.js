@@ -190,8 +190,7 @@ async function afterRead(results, _req) {
 
     // Budget remaining: >20% = 3 (green), >0 = 2 (warning), <=0 = 1 (negative/red)
     const budgetRatio = budget > 0 ? project.budgetRemaining / budget : 1;
-    project.budgetCriticality =
-      budgetRatio > 0.2 ? 3 : budgetRatio > 0 ? 2 : 1;
+    project.budgetCriticality = budgetRatio > 0.2 ? 3 : budgetRatio > 0 ? 2 : 1;
 
     const projBudgetRatio =
       budget > 0 ? project.projectedBudgetRemaining / budget : 1;
