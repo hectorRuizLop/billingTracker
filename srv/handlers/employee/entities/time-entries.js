@@ -6,6 +6,13 @@ const {
   validateUpdate,
 } = require("../../shared/time-entry-policy");
 
+const STATUS_CRITICALITY = {
+  D: 0, // Draft
+  S: 2, // Submitted
+  A: 3, // Approved
+  R: 1, // Rejected
+};
+
 async function beforeCreate(req) {
   const { project_ID, employee_ID } = req.data;
 
@@ -55,4 +62,13 @@ async function beforeUpdate(req) {
   return validateUpdate(req, "TimeEntries");
 }
 
-module.exports = { beforeCreate, beforeUpdate };
+async function afterRead(results, _req) {
+  if (!results) return;
+  const entries = Array.isArray(results) ? results : [results];
+
+  for (const entry of entries) {
+    entry.statusCriticality = STATUS_CRITICALITY[entry.status] ?? 0;
+  }
+}
+
+module.exports = { beforeCreate, beforeUpdate, afterRead };
