@@ -5,7 +5,13 @@ const js = require('@eslint/js');
 module.exports = [
   js.configs.recommended,
   {
-    ignores: ['eslint.config.js', 'jest.config.js'],
+    ignores: [
+      'eslint.config.js',
+      'jest.config.js',
+      'gen/**',
+      'app/**',
+      'node_modules/**',
+    ],
   },
   {
     files: ['*.js', 'srv/**/*.js', 'test/**/*.js'],
@@ -21,6 +27,11 @@ module.exports = [
         __filename: 'readonly',
         process:    'readonly',
         console:    'readonly',
+        global:     'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
         INSERT:     'readonly',
         SELECT:     'readonly',
         UPDATE:     'readonly',
@@ -45,6 +56,13 @@ module.exports = [
       eqeqeq:           'error',
       semi:             ['error', 'always'],
       'no-var':         'error',
+    },
+  },
+  // Test scripts at repo root are allowed to log
+  {
+    files: ['test-*.js'],
+    rules: {
+      'no-console': 'off',
     },
   },
 ];

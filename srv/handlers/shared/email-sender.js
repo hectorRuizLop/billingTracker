@@ -99,7 +99,6 @@ class EmailSender {
 
     if (this._sandboxMode) {
       if (this._sandboxRecipients.length > 0) {
-        to = this._sandboxRecipients.join(", ");
         recipients = this._sandboxRecipients.map((r) => ({
           name: r,
           email: r,

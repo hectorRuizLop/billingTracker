@@ -88,7 +88,7 @@ async function test() {
   }
 
   // Force exit because CDS keeps handles open
-  setTimeout(() => process.exit(0), 500);
+  global.setTimeout(() => process.exit(0), 500);
 }
 
 test().catch((err) => {
