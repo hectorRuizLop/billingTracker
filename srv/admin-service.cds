@@ -11,7 +11,7 @@ service AdminService @(path: '/api/admin')@(requires: 'Admin') {
     projection on db.TimeEntries {
       *,
       @readonly year         : String,
-      @readonly rateSnapshot : Decimal(15,2),
+      @readonly rateSnapshot : Decimal(15, 2),
       @readonly billingStatus,
       @readonly reviewedAt,
       @readonly reviewedBy,

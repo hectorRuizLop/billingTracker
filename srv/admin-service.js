@@ -58,7 +58,11 @@ module.exports = class AdminService extends cds.ApplicationService {
 
         await tx.run(
           UPDATE(Clients)
-            .set({ isDeleted: true, deletedAt: new Date(), deletedBy: req.user.id })
+            .set({
+              isDeleted: true,
+              deletedAt: new Date(),
+              deletedBy: req.user.id,
+            })
             .where({ ID }),
         );
 
