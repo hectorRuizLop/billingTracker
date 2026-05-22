@@ -44,7 +44,7 @@ type UserRole            : String(1) enum {
 entity Categories : cuid, managed {
   code        : CategoryCode   @mandatory;
   name        : String(50)     @mandatory;
-  rate        : Decimal(14, 4) @mandatory;
+  rate        : Decimal(14, 2) @mandatory;
   description : String(200);
   //Slowly changing dimensions
   validFrom   : Date default '1900-01-01';
@@ -133,7 +133,7 @@ entity ProjectAssignments : cuid, managed {
   isActive   : Boolean default true;
   removedAt  : Timestamp;
   removedBy  : String;
-  customRate : Decimal(14, 4); // Allows a manager to assign a worker with a different rate
+  customRate : Decimal(14, 2); // Allows a manager to assign a worker with a different rate
   validFrom  : Date default '1900-01-01';
   validTo    : Date default '9999-12-31';
 }
@@ -148,7 +148,7 @@ entity TimeEntries : cuid, managed {
   reviewedBy    : String;
   rejectionNote : String(500);
 
-  rateSnapshot  : Decimal(14, 4);
+  rateSnapshot  : Decimal(14, 2);
   billingStatus : BillingStatus default 'U';
 
   employee      : Association to Employees @mandatory;
@@ -204,7 +204,7 @@ entity InvoiceLines : cuid {
   timeEntry    : Association to TimeEntries @mandatory;
   description  : String(500);
   hours        : Decimal(4, 2);
-  rateSnapshot : Decimal(14, 4);
+  rateSnapshot : Decimal(14, 2);
   amount       : Decimal(19, 4);
 }
 
@@ -241,3 +241,11 @@ entity JobLocks : cuid {
   lockedBy  : String(100);
   expiresAt : Timestamp;
 }
+
+// Aggregated view for donut chart — hours grouped by project + employee category
+// Pre-computed so Fiori does not need OData $apply (unsupported in SQLite)
+view ProjectCategoryStats as select from TimeEntries {
+  key project.ID              as project_ID  : UUID,
+  key employee.category.name  as categoryName : String,
+      sum(hours)              as totalHours   : Decimal(15, 2)
+} group by project.ID, employee.category.name;
