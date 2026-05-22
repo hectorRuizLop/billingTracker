@@ -63,6 +63,55 @@
                   }
                 }
               ]
+            },
+            {
+              "id": "Administration",
+              "title": "Administración",
+              "isPreset": true,
+              "isVisible": true,
+              "isGroupLocked": false,
+              "tiles": [
+                {
+                  "id": "AdminEmployees",
+                  "tileType": "sap.ushell.ui.tile.StaticTile",
+                  "properties": {
+                    "title": "Empleados",
+                    "targetURL": "#AdminDashboard-manage"
+                  }
+                },
+                {
+                  "id": "AdminClients",
+                  "tileType": "sap.ushell.ui.tile.StaticTile",
+                  "properties": {
+                    "title": "Clientes",
+                    "targetURL": "#AdminClients-manage"
+                  }
+                },
+                {
+                  "id": "AdminProjects",
+                  "tileType": "sap.ushell.ui.tile.StaticTile",
+                  "properties": {
+                    "title": "Proyectos",
+                    "targetURL": "#AdminProjects-manage"
+                  }
+                },
+                {
+                  "id": "AdminTimeEntries",
+                  "tileType": "sap.ushell.ui.tile.StaticTile",
+                  "properties": {
+                    "title": "Imputaciones",
+                    "targetURL": "#AdminTimeEntries-manage"
+                  }
+                },
+                {
+                  "id": "AdminInvoices",
+                  "tileType": "sap.ushell.ui.tile.StaticTile",
+                  "properties": {
+                    "title": "Facturas",
+                    "targetURL": "#AdminInvoices-manage"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -103,6 +152,76 @@
                 "applicationType": "SAPUI5",
                 "additionalInformation": "SAPUI5.Component=nubexx.billing.manager",
                 "url": "/manager-dashboard/webapp"
+              }
+            },
+            "AdminDashboard": {
+              "semanticObject": "AdminDashboard",
+              "action": "manage",
+              "title": "Panel de Administración",
+              "signature": {
+                "parameters": {},
+                "additionalParameters": "allowed"
+              },
+              "resolutionResult": {
+                "applicationType": "SAPUI5",
+                "additionalInformation": "SAPUI5.Component=nubexx.billing.admin",
+                "url": "/admin-dashboard/webapp"
+              }
+            },
+            "AdminClients": {
+              "semanticObject": "AdminClients",
+              "action": "manage",
+              "title": "Clientes",
+              "signature": {
+                "parameters": {},
+                "additionalParameters": "allowed"
+              },
+              "resolutionResult": {
+                "applicationType": "SAPUI5",
+                "additionalInformation": "SAPUI5.Component=nubexx.billing.admin.clients",
+                "url": "/admin-clients/webapp"
+              }
+            },
+            "AdminProjects": {
+              "semanticObject": "AdminProjects",
+              "action": "manage",
+              "title": "Proyectos",
+              "signature": {
+                "parameters": {},
+                "additionalParameters": "allowed"
+              },
+              "resolutionResult": {
+                "applicationType": "SAPUI5",
+                "additionalInformation": "SAPUI5.Component=nubexx.billing.admin.projects",
+                "url": "/admin-projects/webapp"
+              }
+            },
+            "AdminTimeEntries": {
+              "semanticObject": "AdminTimeEntries",
+              "action": "manage",
+              "title": "Imputaciones",
+              "signature": {
+                "parameters": {},
+                "additionalParameters": "allowed"
+              },
+              "resolutionResult": {
+                "applicationType": "SAPUI5",
+                "additionalInformation": "SAPUI5.Component=nubexx.billing.admin.timeentries",
+                "url": "/admin-timeentries/webapp"
+              }
+            },
+            "AdminInvoices": {
+              "semanticObject": "AdminInvoices",
+              "action": "manage",
+              "title": "Facturas",
+              "signature": {
+                "parameters": {},
+                "additionalParameters": "allowed"
+              },
+              "resolutionResult": {
+                "applicationType": "SAPUI5",
+                "additionalInformation": "SAPUI5.Component=nubexx.billing.admin.invoices",
+                "url": "/admin-invoices/webapp"
               }
             }
           }

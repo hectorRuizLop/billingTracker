@@ -7,6 +7,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Billing Tracker</title>
 
+  <!--
+    Inlined ushell configuration to avoid async fetch race conditions.
+  -->
   <script>
     window['sap-ushell-config'] = {
       defaultRenderer: 'fiori2',
@@ -19,8 +22,247 @@
           }
         }
       },
-      applications: {}
-    }
+      services: {
+        LaunchPage: {
+          adapter: {
+            config: {
+              groups: [
+                {
+                  id: 'Employee',
+                  title: 'Empleado',
+                  isPreset: true,
+                  isVisible: true,
+                  isGroupLocked: false,
+                  tiles: [
+                    {
+                      id: 'EmployeeTimeTracking',
+                      tileType: 'sap.ushell.ui.tile.StaticTile',
+                      properties: {
+                        title: 'Fichajes de Empleado',
+                        targetURL: '#TimeEntries-manage'
+                      }
+                    },
+                    {
+                      id: 'EmployeeProjectSummary',
+                      tileType: 'sap.ushell.ui.tile.StaticTile',
+                      properties: {
+                        title: 'Totales por Proyecto',
+                        targetURL: '#TimeEntries-manage&/MyProjectSummary'
+                      }
+                    },
+                    {
+                      id: 'EmployeeMonthlySummary',
+                      tileType: 'sap.ushell.ui.tile.StaticTile',
+                      properties: {
+                        title: 'Resumen Mensual',
+                        targetURL: '#TimeEntries-manage&/MyMonthlySummary'
+                      }
+                    }
+                  ]
+                },
+                {
+                  id: 'Manager',
+                  title: 'Manager',
+                  isPreset: true,
+                  isVisible: true,
+                  isGroupLocked: false,
+                  tiles: [
+                    {
+                      id: 'ManagerProjects',
+                      tileType: 'sap.ushell.ui.tile.StaticTile',
+                      properties: {
+                        title: 'Mis Proyectos',
+                        subtitle: 'Gestión y analíticas',
+                        targetURL: '#Projects-manage'
+                      }
+                    },
+                    {
+                      id: 'ManagerTimeEntries',
+                      tileType: 'sap.ushell.ui.tile.StaticTile',
+                      properties: {
+                        title: 'Revisión de Horas',
+                        subtitle: 'Aprobar / Rechazar',
+                        targetURL: '#Projects-manage&/TimeEntries'
+                      }
+                    }
+                  ]
+                },
+                {
+                  id: 'Administration',
+                  title: 'Administración',
+                  isPreset: true,
+                  isVisible: true,
+                  isGroupLocked: false,
+                  tiles: [
+                    {
+                      id: 'AdminEmployees',
+                      tileType: 'sap.ushell.ui.tile.StaticTile',
+                      properties: {
+                        title: 'Empleados',
+                        targetURL: '#AdminDashboard-manage'
+                      }
+                    },
+                    {
+                      id: 'AdminClients',
+                      tileType: 'sap.ushell.ui.tile.StaticTile',
+                      properties: {
+                        title: 'Clientes',
+                        targetURL: '#AdminClients-manage'
+                      }
+                    },
+                    {
+                      id: 'AdminProjects',
+                      tileType: 'sap.ushell.ui.tile.StaticTile',
+                      properties: {
+                        title: 'Proyectos',
+                        targetURL: '#AdminProjects-manage'
+                      }
+                    },
+                    {
+                      id: 'AdminTimeEntries',
+                      tileType: 'sap.ushell.ui.tile.StaticTile',
+                      properties: {
+                        title: 'Imputaciones',
+                        targetURL: '#AdminTimeEntries-manage'
+                      }
+                    },
+                    {
+                      id: 'AdminInvoices',
+                      tileType: 'sap.ushell.ui.tile.StaticTile',
+                      properties: {
+                        title: 'Facturas',
+                        targetURL: '#AdminInvoices-manage'
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        NavTargetResolution: {
+          config: {
+            enableClientSideTargetResolution: true
+          }
+        },
+        ClientSideTargetResolution: {
+          adapter: {
+            config: {
+              inbounds: {
+                EmployeeTimeTracking: {
+                  semanticObject: 'TimeEntries',
+                  action: 'manage',
+                  title: 'Fichajes de Empleado',
+                  signature: {
+                    parameters: {},
+                    additionalParameters: 'allowed'
+                  },
+                  resolutionResult: {
+                    applicationType: 'SAPUI5',
+                    additionalInformation: 'SAPUI5.Component=nubexx.billing.employee',
+                    url: '/employee-time-tracking/webapp'
+                  }
+                },
+                ManagerDashboard: {
+                  semanticObject: 'Projects',
+                  action: 'manage',
+                  title: 'Panel de Manager',
+                  signature: {
+                    parameters: {},
+                    additionalParameters: 'allowed'
+                  },
+                  resolutionResult: {
+                    applicationType: 'SAPUI5',
+                    additionalInformation: 'SAPUI5.Component=nubexx.billing.manager',
+                    url: '/manager-dashboard/webapp'
+                  }
+                },
+                AdminDashboard: {
+                  semanticObject: 'AdminDashboard',
+                  action: 'manage',
+                  title: 'Panel de Administración',
+                  signature: {
+                    parameters: {},
+                    additionalParameters: 'allowed'
+                  },
+                  resolutionResult: {
+                    applicationType: 'SAPUI5',
+                    additionalInformation: 'SAPUI5.Component=nubexx.billing.admin',
+                    url: '/admin-dashboard/webapp'
+                  }
+                },
+                AdminClients: {
+                  semanticObject: 'AdminClients',
+                  action: 'manage',
+                  title: 'Clientes',
+                  signature: {
+                    parameters: {},
+                    additionalParameters: 'allowed'
+                  },
+                  resolutionResult: {
+                    applicationType: 'SAPUI5',
+                    additionalInformation: 'SAPUI5.Component=nubexx.billing.admin.clients',
+                    url: '/admin-clients/webapp'
+                  }
+                },
+                AdminProjects: {
+                  semanticObject: 'AdminProjects',
+                  action: 'manage',
+                  title: 'Proyectos',
+                  signature: {
+                    parameters: {},
+                    additionalParameters: 'allowed'
+                  },
+                  resolutionResult: {
+                    applicationType: 'SAPUI5',
+                    additionalInformation: 'SAPUI5.Component=nubexx.billing.admin.projects',
+                    url: '/admin-projects/webapp'
+                  }
+                },
+                AdminTimeEntries: {
+                  semanticObject: 'AdminTimeEntries',
+                  action: 'manage',
+                  title: 'Imputaciones',
+                  signature: {
+                    parameters: {},
+                    additionalParameters: 'allowed'
+                  },
+                  resolutionResult: {
+                    applicationType: 'SAPUI5',
+                    additionalInformation: 'SAPUI5.Component=nubexx.billing.admin.timeentries',
+                    url: '/admin-timeentries/webapp'
+                  }
+                },
+                AdminInvoices: {
+                  semanticObject: 'AdminInvoices',
+                  action: 'manage',
+                  title: 'Facturas',
+                  signature: {
+                    parameters: {},
+                    additionalParameters: 'allowed'
+                  },
+                  resolutionResult: {
+                    applicationType: 'SAPUI5',
+                    additionalInformation: 'SAPUI5.Component=nubexx.billing.admin.invoices',
+                    url: '/admin-invoices/webapp'
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Pre-authenticate: establishes the session cookie before the sandbox
+       tries to load OData metadata. The Fiori sandbox suppresses 401 dialogs. -->
+  <script>
+    (function () {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/api/employee/', false);
+      xhr.send();
+    })();
   </script>
 
   <script
@@ -37,11 +279,11 @@
   </script>
 
   <script>
-    sap.ui.getCore().attachInit(() => {
+    sap.ui.getCore().attachInit(function () {
       sap.ushell.Container
         .createRenderer('fiori2', true)
-        .then(renderer => renderer.placeAt('content'))
-    })
+        .then(function(renderer) { renderer.placeAt('content'); });
+    });
   </script>
 </head>
 
