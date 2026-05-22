@@ -11,25 +11,26 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
       *,
       client.name as clientName,
       virtual totalHours                 : Decimal(15, 2),
-      virtual totalCost                  : Decimal(19, 4), // Preserve decimals in aggregates
-      virtual budgetRemaining            : Decimal(19, 4), // Avoid rounding cascade
-      virtual avgCostPerHour             : Decimal(19, 4), // Intermediate calc accuracy
+      virtual totalCost                  : Decimal(19, 2), // Display with 2 decimals
+      virtual budgetRemaining            : Decimal(19, 2),
+      virtual avgCostPerHour             : Decimal(19, 2),
       virtual projectedTotalHours        : Decimal(15, 2),
-      virtual projectedTotalCost         : Decimal(19, 4),
-      virtual projectedBudgetRemaining   : Decimal(19, 4),
+      virtual projectedTotalCost         : Decimal(19, 2),
+      virtual projectedBudgetRemaining   : Decimal(19, 2),
       virtual submittedHours             : Decimal(15, 2),
-      virtual submittedCost              : Decimal(19, 4),
+      virtual submittedCost              : Decimal(19, 2),
       virtual juniorHours                : Decimal(15, 2),
-      virtual juniorCost                 : Decimal(19, 4),
+      virtual juniorCost                 : Decimal(19, 2),
       virtual midLevelHours              : Decimal(15, 2),
-      virtual midLevelCost               : Decimal(19, 4),
+      virtual midLevelCost               : Decimal(19, 2),
       virtual seniorHours                : Decimal(15, 2),
-      virtual seniorCost                 : Decimal(19, 4),
+      virtual seniorCost                 : Decimal(19, 2),
       virtual leadHours                  : Decimal(15, 2),
-      virtual leadCost                   : Decimal(19, 4),
+      virtual leadCost                   : Decimal(19, 2),
       virtual statusCriticality          : Integer,
       virtual budgetCriticality          : Integer,
-      virtual projectedBudgetCriticality : Integer
+      virtual projectedBudgetCriticality : Integer,
+      categoryStats : Association to many CategoryStats on categoryStats.project_ID = ID
     };
 
   @restrict: [{
@@ -40,6 +41,11 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
     ],
     where: 'project.manager.externalId = $user'
   }]
+  @Aggregation.ApplySupported: {
+    Transformations: ['aggregate', 'groupby'],
+    Rollup: #None
+  }
+  @cds.redirection.target
   entity TimeEntries        as
     projection on db.TimeEntries {
       *,
@@ -48,6 +54,7 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
       (
         employee.firstName || ' ' || employee.lastName
       )                      as employeeName      : String,
+      @Analytics.Dimension: true
       employee.category.name as categoryName,
       project.name           as projectName,
       @readonly status,
@@ -62,12 +69,21 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
         else (
                hours * rateSnapshot
              )
-      end                    as cost              : Decimal(19, 4), // Keep 4 decimals
+      end                    as cost              : Decimal(19, 2), // Display with 2 decimals
+      @Analytics.Measure: true
+      @Aggregation.default: #SUM
+      hours,
       virtual null           as statusCriticality : Integer,
 
       // virtual field used to resolve the manager's human readable name
       // instead of displaying the raw UUID stored in reviewedBy
-      virtual null           as reviewerName      : String
+      virtual null           as reviewerName      : String,
+      case status
+        when 'D' then 'Draft'
+        when 'S' then 'Submitted'
+        when 'A' then 'Approved'
+        when 'R' then 'Rejected'
+      end                    as statusText          : String
     }
     actions {
       // Only enable the action button when the time entry is Submitted ('S')
@@ -96,7 +112,8 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
       (
         employee.firstName || ' ' || employee.lastName
       )                      as employeeName : String,
-      employee.category.name as categoryName : String
+      employee.category.name as categoryName : String,
+      // isActiveCriticality removed — handled via UI formatting
     };
 
   // Managers can read billing periods for projects they manage
@@ -105,6 +122,10 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
     where: 'project.manager.externalId = $user'
   }]
   entity BillingPeriods     as projection on db.BillingPeriods;
+
+  // Pre-aggregated category hours per project — avoids SQLite $apply limitation
+  @readonly
+  entity CategoryStats      as projection on db.ProjectCategoryStats;
 
   // Read-only projections for Fiori ValueHelps
   @readonly
@@ -133,5 +154,8 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
     }
     where
       isActive = true;
+
+  action approveTimeEntries(timeEntryIds : array of UUID) returns String;
+  action rejectTimeEntries(timeEntryIds : array of UUID, rejectionNote : String) returns String;
 
 }

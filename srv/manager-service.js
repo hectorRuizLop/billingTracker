@@ -40,6 +40,14 @@ module.exports = class ManagerService extends cds.ApplicationService {
       "TimeEntries",
       handlers.manager.actions.timeEntries.rejectTimeEntry,
     );
+    this.on(
+      "approveTimeEntries",
+      handlers.manager.actions.timeEntries.approveTimeEntries,
+    );
+    this.on(
+      "rejectTimeEntries",
+      handlers.manager.actions.timeEntries.rejectTimeEntries,
+    );
     this.after(
       "READ",
       "Projects",

@@ -72,6 +72,10 @@ async function beforeUpdate(req) {
   req.data.closedBy = req.user.id;
 }
 
+function round2(value) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
 async function afterRead(results, _req) {
   if (!results) return;
 
@@ -158,17 +162,24 @@ async function afterRead(results, _req) {
     const budget = project.budget || 0;
     const cats = categoryByProject[project.ID] || {};
 
-    project.totalHours = agg.totalHours;
-    project.totalCost = agg.totalCost;
-    project.budgetRemaining = budget - agg.totalCost;
-    project.avgCostPerHour =
-      agg.totalHours > 0 ? agg.totalCost / agg.totalHours : 0;
+    project.totalHours = round2(agg.totalHours);
+    project.totalCost = round2(agg.totalCost);
+    project.budgetRemaining = round2(budget - agg.totalCost);
+    project.avgCostPerHour = round2(
+      agg.totalHours > 0 ? agg.totalCost / agg.totalHours : 0
+    );
 
-    project.projectedTotalHours = projected.projectedTotalHours;
-    project.projectedTotalCost = projected.projectedTotalCost;
-    project.projectedBudgetRemaining = budget - projected.projectedTotalCost;
-    project.submittedHours = projected.projectedTotalHours - agg.totalHours;
-    project.submittedCost = projected.projectedTotalCost - agg.totalCost;
+    project.projectedTotalHours = round2(projected.projectedTotalHours);
+    project.projectedTotalCost = round2(projected.projectedTotalCost);
+    project.projectedBudgetRemaining = round2(
+      budget - projected.projectedTotalCost
+    );
+    project.submittedHours = round2(
+      projected.projectedTotalHours - agg.totalHours
+    );
+    project.submittedCost = round2(
+      projected.projectedTotalCost - agg.totalCost
+    );
 
     const catDefaults = { hours: 0, cost: 0 };
     const j = cats["J"] || catDefaults;
@@ -176,20 +187,31 @@ async function afterRead(results, _req) {
     const s = cats["S"] || catDefaults;
     const l = cats["L"] || catDefaults;
 
-    project.juniorHours = j.hours;
-    project.juniorCost = j.cost;
-    project.midLevelHours = m.hours;
-    project.midLevelCost = m.cost;
-    project.seniorHours = s.hours;
-    project.seniorCost = s.cost;
-    project.leadHours = l.hours;
-    project.leadCost = l.cost;
+    project.juniorHours = round2(j.hours);
+    project.juniorCost = round2(j.cost);
+    project.midLevelHours = round2(m.hours);
+    project.midLevelCost = round2(m.cost);
+    project.seniorHours = round2(s.hours);
+    project.seniorCost = round2(s.cost);
+    project.leadHours = round2(l.hours);
+    project.leadCost = round2(l.cost);
 
-    // Criticality for color-coding
-    project.statusCriticality = project.status === "O" ? 3 : 0;
-
-    // Budget remaining: >20% = 3 (green), >0 = 2 (warning), <=0 = 1 (negative/red)
+    // Status criticality based on project health (budget-driven):
+    // 3 (Positive/Green)  = Open and >20% budget remaining
+    // 2 (Critical/Yellow) = Open and 0-20% budget remaining
+    // 1 (Negative/Red)    = Over budget (budgetRemaining <= 0)
+    // 0 (Neutral)         = Closed
     const budgetRatio = budget > 0 ? project.budgetRemaining / budget : 1;
+    if (project.status === "C") {
+      project.statusCriticality = 0; // Closed = neutral
+    } else if (budgetRatio > 0.2) {
+      project.statusCriticality = 3; // On track = green
+    } else if (budgetRatio > 0) {
+      project.statusCriticality = 2; // At risk = yellow
+    } else {
+      project.statusCriticality = 1; // Over budget = red
+    }
+
     project.budgetCriticality = budgetRatio > 0.2 ? 3 : budgetRatio > 0 ? 2 : 1;
 
     const projBudgetRatio =

@@ -4,10 +4,10 @@ const cds = require("@sap/cds");
 const { resolveRateSnapshot } = require("../../shared/resolve-rate-snapshot");
 
 const STATUS_CRITICALITY = {
-  D: 0, // Draft
-  S: 2, // Submitted
-  A: 3, // Approved
-  R: 1, // Rejected
+  D: 0, // Draft — neutral
+  S: 0, // Submitted — neutral 
+  A: 3, // Approved — positive/green
+  R: 1, // Rejected — negative/red
 };
 
 async function beforeCreate(req) {

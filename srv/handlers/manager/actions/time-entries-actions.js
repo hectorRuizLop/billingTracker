@@ -120,8 +120,47 @@ async function rejectTimeEntries(req) {
   return `${rejectedCount} time entries rejected successfully.`;
 }
 
+async function approveTimeEntries(req) {
+  const { timeEntryIds } = req.data;
+  if (!Array.isArray(timeEntryIds) || timeEntryIds.length === 0) {
+    return req.error(400, "At least one time entry ID is required.");
+  }
+  const uniqueIds = [...new Set(timeEntryIds)];
+  const { TimeEntries, Projects } = cds.entities("my.billing");
+
+  const entries = await SELECT.from(TimeEntries).where({ ID: { in: uniqueIds } });
+  if (entries.length !== uniqueIds.length) {
+    return req.error(404, "One or more time entries were not found.");
+  }
+
+  const projectIds = [...new Set(entries.map((e) => e.project_ID))];
+  const managedProjects = await SELECT.from(Projects)
+    .where({ ID: { in: projectIds }, "manager.externalId": req.user.id })
+    .columns(["ID"]);
+  const managedIds = new Set(managedProjects.map((p) => p.ID));
+  const foreignEntries = entries.filter((e) => !managedIds.has(e.project_ID));
+  if (foreignEntries.length > 0) {
+    return req.error(403, "You can only approve time entries for projects you manage.");
+  }
+
+  const notSubmitted = entries.filter((e) => e.status !== "S");
+  if (notSubmitted.length > 0) {
+    return req.error(400, "Only valid if the entries are in Submitted status.");
+  }
+
+  const now = new Date().toISOString();
+  const reviewer = req.user?.id ?? "system";
+
+  await UPDATE(TimeEntries)
+    .set({ status: "A", billingStatus: "U", reviewedAt: now, reviewedBy: reviewer })
+    .where({ ID: { in: uniqueIds } });
+
+  return `${uniqueIds.length} time entries approved successfully.`;
+}
+
 module.exports = {
   approveTimeEntry,
   rejectTimeEntry,
+  approveTimeEntries,
   rejectTimeEntries,
 };
