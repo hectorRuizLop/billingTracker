@@ -97,6 +97,8 @@ service EmployeeService @(path: '/api/employee')@(requires: [
           description,
           status,
           rejectionNote,
+          @readonly reviewedAt,
+          @readonly reviewedBy,
           employee.ID         as employee_ID        : UUID,
           employee.externalId as employeeExternalId : String,
           project.ID          as project_ID         : UUID,
@@ -104,6 +106,12 @@ service EmployeeService @(path: '/api/employee')@(requires: [
           @readonly month,
           @readonly year                            : String,
           @readonly rateSnapshot                    : Decimal(15, 2),
+          case status
+            when 'D' then 'Draft'
+            when 'S' then 'Submitted'
+            when 'A' then 'Approved'
+            when 'R' then 'Rejected'
+          end                 as statusText         : String,
           virtual null        as statusCriticality  : Integer
     };
 
