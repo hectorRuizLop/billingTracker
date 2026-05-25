@@ -1,0 +1,70 @@
+<mvc:View
+  controllerName="nubexx.billing.employee.controller.MyTimeEntriesDetail"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:core="sap.ui.core"
+  xmlns:form="sap.ui.layout.form"
+  xmlns:uxap="sap.uxap">
+  <Page id="detailPage" title="{projectName}" showNavButton="true" navButtonPress=".onNavBack" enableScrolling="false">
+    <uxap:ObjectPageLayout id="detailObjectPage" height="100%" showTitleInHeaderContent="false">
+      <uxap:headerTitle>
+        <uxap:ObjectPageDynamicHeaderTitle>
+          <uxap:expandedHeading>
+            <Title text="{date} — {projectName}"/>
+          </uxap:expandedHeading>
+          <uxap:snappedHeading>
+            <Title text="{date} — {projectName}"/>
+          </uxap:snappedHeading>
+        </uxap:ObjectPageDynamicHeaderTitle>
+      </uxap:headerTitle>
+      <uxap:headerContent>
+        <ObjectStatus
+          text="{statusText}"
+          state="{= ${status} === 'D' ? 'None' : ${status} === 'S' ? 'Information' : ${status} === 'A' ? 'Success' : 'Error'}"/>
+        <ObjectNumber
+          number="{= ${hours} &amp;&amp; ${rateSnapshot} ? parseFloat(${hours}) * parseFloat(${rateSnapshot}) : '' }"
+          unit="EUR"
+          emphasized="true"
+          state="Success"/>
+      </uxap:headerContent>
+      <uxap:sections>
+        <uxap:ObjectPageSection title="{i18n>Details}">
+          <uxap:ObjectPageSubSection>
+            <form:SimpleForm layout="ResponsiveGridLayout" columnsL="2" columnsM="1">
+              <form:content>
+                <Label text="{i18n>Date}"/>
+                <Text text="{date}"/>
+                <Label text="{i18n>Project}"/>
+                <Text text="{projectName}"/>
+                <Label text="{i18n>Hours}"/>
+                <Text text="{hours}"/>
+                <Label text="{i18n>Description}"/>
+                <Text text="{description}"/>
+                <Label text="{i18n>rateSnapshot}"/>
+                <Text text="{rateSnapshot}"/>
+                <Label text="{i18n>cost}"/>
+                <Text text="{= ${hours} &amp;&amp; ${rateSnapshot} ? parseFloat(${hours}) * parseFloat(${rateSnapshot}) : '' }"/>
+              </form:content>
+            </form:SimpleForm>
+          </uxap:ObjectPageSubSection>
+        </uxap:ObjectPageSection>
+        <uxap:ObjectPageSection title="{i18n>ReviewInfo}">
+          <uxap:ObjectPageSubSection>
+            <form:SimpleForm layout="ResponsiveGridLayout" columnsL="2" columnsM="1">
+              <form:content>
+                <Label text="{i18n>Status}"/>
+                <ObjectStatus
+                  text="{statusText}"
+                  state="{= ${status} === 'D' ? 'None' : ${status} === 'S' ? 'Information' : ${status} === 'A' ? 'Success' : 'Error'}"/>
+                <Label text="{i18n>RejectionNote}"/>
+                <Text text="{rejectionNote}"/>
+                <Label text="{i18n>reviewedAt}"/>
+                <Text text="{reviewedAt}"/>
+              </form:content>
+            </form:SimpleForm>
+          </uxap:ObjectPageSubSection>
+        </uxap:ObjectPageSection>
+      </uxap:sections>
+    </uxap:ObjectPageLayout>
+  </Page>
+</mvc:View>
