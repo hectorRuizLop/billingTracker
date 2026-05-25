@@ -1,0 +1,136 @@
+<core:FragmentDefinition
+  xmlns:core="sap.ui.core"
+  xmlns="sap.m"
+  xmlns:form="sap.ui.layout.form"
+  xmlns:mc="sap.suite.ui.microchart">
+  <VBox>
+    <form:Form>
+      <form:layout>
+        <form:ColumnLayout />
+      </form:layout>
+      <form:formContainers>
+        <form:FormContainer title="{i18n>ApprovedFinancials}">
+          <form:formElements>
+            <form:FormElement label="{i18n>ApprovedHours}">
+              <form:fields>
+                <ObjectNumber number="{totalHours}" unit="h"/>
+              </form:fields>
+            </form:FormElement>
+            <form:FormElement label="{i18n>ApprovedCost}">
+              <form:fields>
+                <ObjectNumber number="{totalCost}" unit="EUR"/>
+              </form:fields>
+            </form:FormElement>
+            <form:FormElement label="{i18n>BudgetRemaining}">
+              <form:fields>
+                <ObjectStatus text="{budgetRemaining}"
+                             state="{= ${budgetCriticality} === 1 ? 'Error' : (${budgetCriticality} === 2 ? 'Warning' : 'Success')}"/>
+              </form:fields>
+            </form:FormElement>
+            <form:FormElement label="{i18n>AvgCostPerHour}">
+              <form:fields>
+                <ObjectNumber number="{avgCostPerHour}" unit="EUR"/>
+              </form:fields>
+            </form:FormElement>
+          </form:formElements>
+        </form:FormContainer>
+      </form:formContainers>
+    </form:Form>
+    <form:Form>
+      <form:layout>
+        <form:ColumnLayout />
+      </form:layout>
+      <form:formContainers>
+        <form:FormContainer title="{i18n>ProjectedFinancials}">
+          <form:formElements>
+            <form:FormElement label="{i18n>ProjectedHours}">
+              <form:fields>
+                <ObjectNumber number="{projectedTotalHours}" unit="h"/>
+              </form:fields>
+            </form:FormElement>
+            <form:FormElement label="{i18n>ProjectedCost}">
+              <form:fields>
+                <ObjectNumber number="{projectedTotalCost}" unit="EUR"/>
+              </form:fields>
+            </form:FormElement>
+            <form:FormElement label="{i18n>ProjectedBudgetRemaining}">
+              <form:fields>
+                <ObjectStatus text="{projectedBudgetRemaining}"
+                             state="{= ${projectedBudgetCriticality} === 1 ? 'Error' : (${projectedBudgetCriticality} === 2 ? 'Warning' : 'Success')}"/>
+              </form:fields>
+            </form:FormElement>
+            <form:FormElement label="{i18n>PendingApprovalHours}">
+              <form:fields>
+                <ObjectNumber number="{submittedHours}" unit="h"/>
+              </form:fields>
+            </form:FormElement>
+            <form:FormElement label="{i18n>PendingApprovalCost}">
+              <form:fields>
+                <ObjectNumber number="{submittedCost}" unit="EUR"/>
+              </form:fields>
+            </form:FormElement>
+          </form:formElements>
+        </form:FormContainer>
+      </form:formContainers>
+    </form:Form>
+    <form:Form>
+      <form:layout>
+        <form:ColumnLayout />
+      </form:layout>
+      <form:formContainers>
+        <form:FormContainer title="{i18n>CategoryBreakdown}">
+          <form:formElements>
+            <form:FormElement label="{i18n>JuniorHours}">
+              <form:fields>
+                <ObjectNumber number="{juniorHours}" unit="h"/>
+              </form:fields>
+            </form:FormElement>
+            <form:FormElement label="{i18n>JuniorCost}">
+              <form:fields>
+                <ObjectNumber number="{juniorCost}" unit="EUR"/>
+              </form:fields>
+            </form:FormElement>
+            <form:FormElement label="{i18n>MidLevelHours}">
+              <form:fields>
+                <ObjectNumber number="{midLevelHours}" unit="h"/>
+              </form:fields>
+            </form:FormElement>
+            <form:FormElement label="{i18n>MidLevelCost}">
+              <form:fields>
+                <ObjectNumber number="{midLevelCost}" unit="EUR"/>
+              </form:fields>
+            </form:FormElement>
+            <form:FormElement label="{i18n>SeniorHours}">
+              <form:fields>
+                <ObjectNumber number="{seniorHours}" unit="h"/>
+              </form:fields>
+            </form:FormElement>
+            <form:FormElement label="{i18n>SeniorCost}">
+              <form:fields>
+                <ObjectNumber number="{seniorCost}" unit="EUR"/>
+              </form:fields>
+            </form:FormElement>
+            <form:FormElement label="{i18n>LeadHours}">
+              <form:fields>
+                <ObjectNumber number="{leadHours}" unit="h"/>
+              </form:fields>
+            </form:FormElement>
+            <form:FormElement label="{i18n>LeadCost}">
+              <form:fields>
+                <ObjectNumber number="{leadCost}" unit="EUR"/>
+              </form:fields>
+            </form:FormElement>
+          </form:formElements>
+        </form:FormContainer>
+      </form:formContainers>
+    </form:Form>
+    <VBox class="sapUiSmallMargin">
+      <Title text="{i18n>CategoryBreakdownChart}" level="H4"/>
+      <mc:InteractiveDonutChart segments="{categoryStats}" selectionChanged=".onSegmentSelect">
+        <mc:segments>
+          <mc:InteractiveDonutChartSegment label="{categoryName}" value="{totalHours}"/>
+        </mc:segments>
+      </mc:InteractiveDonutChart>
+    </VBox>
+  </VBox>
+</core:FragmentDefinition>

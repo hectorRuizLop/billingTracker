@@ -1,0 +1,26 @@
+<core:FragmentDefinition
+  xmlns:core="sap.ui.core"
+  xmlns="sap.m">
+  <Table items="{assignments}" growing="true">
+    <columns>
+      <Column><Text text="{i18n>Employee}"/></Column>
+      <Column><Text text="{i18n>Category}"/></Column>
+      <Column><Text text="{i18n>AssignedAt}"/></Column>
+      <Column><Text text="{i18n>Active}"/></Column>
+      <Column><Text text="{i18n>CustomRate}"/></Column>
+    </columns>
+    <items>
+      <ColumnListItem>
+        <cells>
+          <Text text="{employeeName}"/>
+          <Text text="{categoryName}"/>
+          <Text text="{assignedAt}"/>
+          <core:Icon src="{= ${isActive} ? 'sap-icon://accept' : 'sap-icon://decline'}"
+                     color="{= ${isActive} ? '#107e3e' : '#bb0000'}"/>
+          <ObjectNumber number="{path:'customRate',type:'sap.ui.model.type.Float',formatOptions:{minFractionDigits:2,maxFractionDigits:2}}" unit="EUR" visible="{= !!${customRate}}"/>
+          <Text text="{i18n>NoCustomRate}" visible="{= !${customRate}}"/>
+        </cells>
+      </ColumnListItem>
+    </items>
+  </Table>
+</core:FragmentDefinition>

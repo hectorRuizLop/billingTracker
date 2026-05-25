@@ -1,0 +1,100 @@
+<core:FragmentDefinition
+  xmlns:core="sap.ui.core"
+  xmlns="sap.m"
+  xmlns:viz="sap.viz.ui5.controls"
+  xmlns:viz.data="sap.viz.ui5.data"
+  xmlns:viz.feeds="sap.viz.ui5.controls.common.feeds">
+  <VBox>
+    <VBox>
+      <Toolbar>
+        <Button icon="sap-icon://nav-back" press=".onPreviousMonth" tooltip="{i18n>PreviousMonth}"/>
+        <Title id="monthNavigatorTitle" text=""/>
+        <Button icon="sap-icon://navigation-right-arrow" press=".onNextMonth" tooltip="{i18n>NextMonth}"/>
+      </Toolbar>
+
+      <ScrollContainer horizontal="true" vertical="false" width="100%" height="280px">
+        <viz:VizFrame id="timeEntriesChart"
+                      uiConfig="{applicationSet:'fiori'}"
+                      vizType="stacked_column"
+                      width="100%"
+                      height="260px"
+                      selectData=".onChartSelectData">
+          <viz:dataset>
+            <viz.data:FlattenedDataset data="{chartData>/entries}">
+              <viz.data:dimensions>
+                <viz.data:DimensionDefinition name="Date" value="{path:'date',formatter:'.formatDateShort'}"/>
+                <viz.data:DimensionDefinition name="Status" value="{status}"/>
+              </viz.data:dimensions>
+              <viz.data:measures>
+                <viz.data:MeasureDefinition name="Hours" value="{hours}"/>
+              </viz.data:measures>
+            </viz.data:FlattenedDataset>
+          </viz:dataset>
+          <viz:feeds>
+            <viz.feeds:FeedItem uid="valueAxis" type="Measure" values="Hours"/>
+            <viz.feeds:FeedItem uid="categoryAxis" type="Dimension" values="Date"/>
+            <viz.feeds:FeedItem uid="color" type="Dimension" values="Status"/>
+          </viz:feeds>
+        </viz:VizFrame>
+      </ScrollContainer>
+
+      <HBox alignItems="Center" justifyContent="Center" class="sapUiTinyMarginTop">
+        <ObjectStatus text="{i18n>Draft}" state="None" icon="sap-icon://circle-task-2" class="sapUiTinyMarginEnd"/>
+        <ObjectStatus text="{i18n>Submitted}" state="Information" icon="sap-icon://circle-task-2" class="sapUiTinyMarginEnd"/>
+        <ObjectStatus text="{i18n>Approved}" state="Success" icon="sap-icon://circle-task-2" class="sapUiTinyMarginEnd"/>
+        <ObjectStatus text="{i18n>Rejected}" state="Error" icon="sap-icon://circle-task-2"/>
+      </HBox>
+
+      <HBox alignItems="Center" justifyContent="End" class="sapUiTinyMarginTop">
+        <Button id="clearChartFilterBtn" text="{i18n>ClearChartFilter}" icon="sap-icon://clear-filter" press=".onClearChartFilter" visible="false" type="Transparent"/>
+      </HBox>
+    </VBox>
+
+      <Table items="{timeEntries}" growing="true" mode="MultiSelect" id="timeEntriesTable">
+        <headerToolbar>
+          <OverflowToolbar>
+            <Title text="{i18n>TimeEntries}"/>
+            <Select id="statusFilter" change=".onFilterTimeEntries" width="10rem">
+              <items>
+                <core:Item key="" text="{i18n>All}"/>
+                <core:Item key="D" text="{i18n>Draft}"/>
+                <core:Item key="S" text="{i18n>Submitted}"/>
+                <core:Item key="A" text="{i18n>Approved}"/>
+                <core:Item key="R" text="{i18n>Rejected}"/>
+              </items>
+            </Select>
+            <ToolbarSpacer/>
+            <Button icon="sap-icon://sort" press=".onSortTimeEntries" tooltip="{i18n>Sort}"/>
+            <Button text="{i18n>ApproveSelected}" icon="sap-icon://accept" press=".onApproveSelected" type="Accept"/>
+            <Button text="{i18n>RejectSelected}" icon="sap-icon://decline" press=".onRejectSelected" type="Reject"/>
+          </OverflowToolbar>
+        </headerToolbar>
+        <columns>
+          <Column><Text text="{i18n>Date}"/></Column>
+          <Column><Text text="{i18n>Employee}"/></Column>
+          <Column><Text text="{i18n>Category}"/></Column>
+          <Column width="6rem"><Text text="{i18n>Hours}"/></Column>
+          <Column width="8rem"><Text text="{i18n>Status}"/></Column>
+          <Column width="5rem" hAlign="Center"><Text text="{i18n>Actions}"/></Column>
+          <Column width="7rem"><Text text="{i18n>Cost}"/></Column>
+        </columns>
+        <items>
+          <ColumnListItem>
+            <cells>
+              <Text text="{date}"/>
+              <Text text="{employeeName}"/>
+              <Text text="{categoryName}"/>
+              <Text text="{hours}"/>
+              <ObjectStatus text="{= ${status} === 'D' ? ${i18n>Draft} : (${status} === 'S' ? ${i18n>Submitted} : (${status} === 'A' ? ${i18n>Approved} : ${i18n>Rejected}))}"
+                            state="{= ${status} === 'D' ? 'None' : (${status} === 'S' ? 'Information' : (${status} === 'A' ? 'Success' : 'Error'))}"/>
+              <HBox alignItems="Center" justifyContent="Center">
+                <Button icon="sap-icon://accept" type="Transparent" press=".onApproveEntry" visible="{= ${status} === 'S'}"/>
+                <Button icon="sap-icon://decline" type="Transparent" press=".onRejectEntry" visible="{= ${status} === 'S'}"/>
+              </HBox>
+              <Text text="{cost}"/>
+            </cells>
+          </ColumnListItem>
+        </items>
+      </Table>
+  </VBox>
+</core:FragmentDefinition>

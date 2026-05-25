@@ -1,0 +1,8 @@
+/* Prevent word-break in ObjectIdentifier within table cells */
+.managerProjectIdentifier .sapMObjectIdentifierTitleText,
+.managerProjectIdentifier .sapMObjectIdentifierText {
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+}
+

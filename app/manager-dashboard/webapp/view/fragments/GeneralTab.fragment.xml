@@ -1,0 +1,51 @@
+<core:FragmentDefinition
+  xmlns:core="sap.ui.core"
+  xmlns="sap.m"
+  xmlns:form="sap.ui.layout.form">
+  <form:Form>
+    <form:layout>
+      <form:ColumnLayout />
+    </form:layout>
+    <form:formContainers>
+      <form:FormContainer title="{i18n>ProjectDetails}">
+        <form:formElements>
+          <form:FormElement label="{i18n>ProjectName}">
+            <form:fields>
+              <Text text="{name}"/>
+            </form:fields>
+          </form:FormElement>
+          <form:FormElement label="{i18n>Client}">
+            <form:fields>
+              <Text text="{clientName}"/>
+            </form:fields>
+          </form:FormElement>
+          <form:FormElement label="{i18n>Status}">
+            <form:fields>
+              <ObjectStatus text="{= ${status} === 'O' ? ${i18n>Open} : ${i18n>Closed}}"
+                           state="{= ${status} === 'O' ? 'Information' : 'Success'}"/>
+            </form:fields>
+          </form:FormElement>
+          <form:FormElement label="{i18n>Budget}">
+            <form:fields>
+              <ObjectNumber number="{budget}" unit="EUR"/>
+            </form:fields>
+          </form:FormElement>
+        </form:formElements>
+      </form:FormContainer>
+      <form:FormContainer title="{i18n>Dates}">
+        <form:formElements>
+          <form:FormElement label="{i18n>StartDate}">
+            <form:fields>
+              <Text text="{startDate}"/>
+            </form:fields>
+          </form:FormElement>
+          <form:FormElement label="{i18n>EndDate}">
+            <form:fields>
+              <Text text="{endDate}"/>
+            </form:fields>
+          </form:FormElement>
+        </form:formElements>
+      </form:FormContainer>
+    </form:formContainers>
+  </form:Form>
+</core:FragmentDefinition>

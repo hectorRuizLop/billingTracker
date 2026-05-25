@@ -1,0 +1,74 @@
+<mvc:View
+  controllerName="nubexx.billing.manager.controller.ProjectDetail"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:core="sap.ui.core"
+  xmlns:f="sap.f"
+  xmlns:form="sap.ui.layout.form"
+  xmlns:mc="sap.suite.ui.microchart">
+
+  <f:DynamicPage id="projectDetailPage" headerExpanded="true" toggleHeaderOnTitleClick="true">
+    <f:title>
+      <f:DynamicPageTitle>
+        <f:heading>
+          <Title text="{name}"/>
+        </f:heading>
+        <f:expandedContent>
+          <ObjectStatus text="{= ${status} === 'O' ? ${i18n>Open} : ${i18n>Closed}}"
+                       state="{= ${status} === 'O' ? 'Information' : 'Success'}"/>
+        </f:expandedContent>
+        <f:snappedContent>
+          <ObjectStatus text="{= ${status} === 'O' ? ${i18n>Open} : ${i18n>Closed}}"
+                       state="{= ${status} === 'O' ? 'Information' : 'Success'}"/>
+        </f:snappedContent>
+        <f:navigationActions>
+          <Button icon="sap-icon://nav-back" type="Transparent" press=".onNavBack" />
+        </f:navigationActions>
+      </f:DynamicPageTitle>
+    </f:title>
+
+    <f:header>
+      <f:DynamicPageHeader pinnable="true">
+        <f:content>
+          <HBox alignItems="Center" justifyContent="SpaceBetween">
+            <VBox class="sapUiSmallMarginEnd">
+              <Label text="{i18n>StartDate} - {i18n>EndDate}"/>
+              <Text text="{startDate} - {endDate}"/>
+            </VBox>
+            <VBox class="sapUiSmallMarginEnd">
+              <Label text="{i18n>BudgetRemaining}"/>
+              <ProgressIndicator
+                percentValue="{= ${budget} > 0 ? parseFloat(((${budget} - (${budgetRemaining})) / ${budget} * 100).toFixed(0)) : 0}"
+                displayValue="{budgetRemaining} EUR"
+                state="{= ${budgetCriticality} === 1 ? 'Error' : (${budgetCriticality} === 2 ? 'Warning' : 'Success')}"
+                width="12rem"/>
+            </VBox>
+            <VBox class="sapUiSmallMarginEnd">
+              <Label text="{i18n>ApprovedHours}"/>
+              <ObjectNumber number="{totalHours}" unit="h"/>
+            </VBox>
+            <VBox class="sapUiSmallMarginEnd">
+              <Label text="{i18n>ApprovedCost}"/>
+              <ObjectNumber number="{totalCost}" unit="EUR"/>
+            </VBox>
+            <VBox>
+              <Label text="{i18n>PendingApprovalHours}"/>
+              <ObjectNumber number="{submittedHours}" unit="h" state="Information"/>
+            </VBox>
+          </HBox>
+        </f:content>
+      </f:DynamicPageHeader>
+    </f:header>
+
+    <f:content>
+      <IconTabBar id="projectTabBar" expandable="false" select=".onTabSelect">
+        <items>
+          <IconTabFilter id="generalTab" text="{i18n>GeneralInfo}" key="general"/>
+          <IconTabFilter id="financialsTab" text="{i18n>FinancialOverview}" key="financials"/>
+          <IconTabFilter id="assignmentsTab" text="{i18n>Assignments}" key="assignments"/>
+          <IconTabFilter id="timeEntriesTab" text="{i18n>TimeEntries}" key="timeEntries"/>
+        </items>
+      </IconTabBar>
+    </f:content>
+  </f:DynamicPage>
+</mvc:View>

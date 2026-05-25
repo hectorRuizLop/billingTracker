@@ -1,0 +1,43 @@
+<mvc:View
+  controllerName="nubexx.billing.manager.controller.TimeEntryDetail"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:form="sap.ui.layout.form">
+  <Page id="timeEntryDetailPage" title="{date}" showNavButton="true" navButtonPress=".onNavBack">
+    <content>
+      <form:SimpleForm title="{i18n>EntryDetails}" layout="ResponsiveGridLayout" columnsL="2" columnsM="1">
+        <form:content>
+          <Label text="{i18n>Date}"/>
+          <Text text="{date}"/>
+          <Label text="{i18n>Employee}"/>
+          <Text text="{employeeName}"/>
+          <Label text="{i18n>Project}"/>
+          <Text text="{projectName}"/>
+          <Label text="{i18n>Category}"/>
+          <Text text="{categoryName}"/>
+          <Label text="{i18n>Hours}"/>
+          <Text text="{hours}"/>
+          <Label text="{i18n>Description}"/>
+          <Text text="{description}"/>
+          <Label text="{i18n>Rate}"/>
+          <Text text="{rateSnapshot}"/>
+          <Label text="{i18n>Cost}"/>
+          <Text text="{cost}"/>
+        </form:content>
+      </form:SimpleForm>
+      <form:SimpleForm title="{i18n>ReviewInfo}" layout="ResponsiveGridLayout" columnsL="2" columnsM="1">
+        <form:content>
+          <Label text="{i18n>Status}"/>
+          <ObjectStatus text="{= ${status} === 'D' ? ${i18n>Draft} : (${status} === 'S' ? ${i18n>Submitted} : (${status} === 'A' ? ${i18n>Approved} : ${i18n>Rejected}))}" 
+                       state="{= ${status} === 'D' ? 'None' : (${status} === 'S' ? 'Information' : (${status} === 'A' ? 'Success' : 'Error')))}"/>
+          <Label text="{i18n>RejectionNote}"/>
+          <Text text="{rejectionNote}"/>
+          <Label text="{i18n>ReviewedAt}"/>
+          <Text text="{reviewedAt}"/>
+          <Label text="{i18n>ReviewedBy}"/>
+          <Text text="{reviewerName}"/>
+        </form:content>
+      </form:SimpleForm>
+    </content>
+  </Page>
+</mvc:View>
