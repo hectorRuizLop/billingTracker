@@ -15,7 +15,7 @@ annotate ManagerService.Projects with @(
 
   UI.SelectionFields: [
     status,
-    client_ID
+    client
   ],
 
   UI.LineItem       : [
@@ -116,7 +116,8 @@ annotate ManagerService.Projects with @(UI: {
           $Type : 'UI.ReferenceFacet',
           Label : '{i18n>CategoryBreakdown}',
           Target: '@UI.FieldGroup#CategoryBreakdown'
-        }
+        },
+
       ]
     },
     {
@@ -153,7 +154,7 @@ annotate ManagerService.Projects with @(UI: {
       Label: '{i18n>ProjectName}'
     },
     {
-      Value: client_ID,
+      Value: client.name,
       Label: '{i18n>Client}'
     },
     {
@@ -275,30 +276,29 @@ annotate ManagerService.Projects with {
 //
 annotate ManagerService.Projects with {
   ID                       @UI.Hidden;
-  manager_ID               @UI.Hidden;
   closedAt                 @UI.Hidden;
   closedBy                 @UI.Hidden;
 
   // All virtual financial fields are readonly
   totalHours               @readonly;
-  totalCost                @readonly;
-  budgetRemaining          @readonly;
-  avgCostPerHour           @readonly;
+  totalCost                @readonly @Measures.Scale: 2;
+  budgetRemaining          @readonly @Measures.Scale: 2;
+  avgCostPerHour           @readonly @Measures.Scale: 2;
   projectedTotalHours      @readonly;
-  projectedTotalCost       @readonly;
-  projectedBudgetRemaining @readonly;
+  projectedTotalCost       @readonly @Measures.Scale: 2;
+  projectedBudgetRemaining @readonly @Measures.Scale: 2;
   submittedHours           @readonly;
-  submittedCost            @readonly;
+  submittedCost            @readonly @Measures.Scale: 2;
   juniorHours              @readonly;
-  juniorCost               @readonly;
+  juniorCost               @readonly @Measures.Scale: 2;
   midLevelHours            @readonly;
-  midLevelCost             @readonly;
+  midLevelCost             @readonly @Measures.Scale: 2;
   seniorHours              @readonly;
-  seniorCost               @readonly;
+  seniorCost               @readonly @Measures.Scale: 2;
   leadHours                @readonly;
-  leadCost                 @readonly;
+  leadCost                 @readonly @Measures.Scale: 2;
 
-  client_ID                @(
+  client                     @(
     Common: {
       Text           : clientName,
       TextArrangement: #TextOnly,
@@ -348,7 +348,7 @@ annotate ManagerService.TimeEntries with @(
   UI.Highlight                   : statusCriticality,
 
   UI.SelectionFields             : [
-    project_ID,
+    project,
     status,
     date
   ],
@@ -586,15 +586,13 @@ annotate ManagerService.TimeEntries actions {
 //
 annotate ManagerService.TimeEntries with {
   ID                @UI.Hidden;
-  employee_ID       @UI.Hidden;
   billingStatus     @UI.Hidden;
   month             @UI.Hidden;
   year              @UI.Hidden;
   statusCriticality @UI.Hidden;
   reviewedBy        @UI.Hidden;
-  reviewer_ID       @UI.Hidden;
 
-  project_ID        @(
+  project           @(
     Common: {
       Text           : projectName,
       TextArrangement: #TextOnly,
@@ -618,10 +616,13 @@ annotate ManagerService.TimeEntries with {
     title : '{i18n>Project}'
   );
 
+  employee          @Common.Text: employeeName;
+  employee          @Common.TextArrangement: #TextOnly;
+
   date              @title: '{i18n>Date}';
   hours             @title: '{i18n>Hours}';
   description       @title: '{i18n>Description}'    @UI.MultiLineText;
-  status            @title: '{i18n>Status}';
+  status            @(title: '{i18n>Status}', Common.ValueListWithFixedValues, Common.Text: statusText);
   employeeName      @title: '{i18n>Employee}';
   projectName       @title: '{i18n>Project}';
   categoryName      @title: '{i18n>Category}';
@@ -669,7 +670,7 @@ annotate ManagerService.ProjectAssignments with @(
     }
   ],
   UI.SelectionFields    : [
-    employee_ID,
+    employee,
     categoryName,
     isActive
   ],
@@ -690,13 +691,12 @@ annotate ManagerService.ProjectAssignments with @(
 
 annotate ManagerService.ProjectAssignments with {
   ID           @UI.Hidden;
-  project_ID   @UI.Hidden;
   removedAt    @UI.Hidden;
   removedBy    @UI.Hidden;
   validFrom    @UI.Hidden;
   validTo      @UI.Hidden;
 
-  employee_ID  @(
+  employee     @(
     Common: {
       Text           : employeeName,
       TextArrangement: #TextFirst,
@@ -812,6 +812,7 @@ annotate ManagerService.Employees with {
 //  BillingPeriods (read-only reference)
 //
 annotate ManagerService.BillingPeriods with {
-  ID         @UI.Hidden;
-  project_ID @UI.Hidden;
+  ID @UI.Hidden;
 };
+
+
