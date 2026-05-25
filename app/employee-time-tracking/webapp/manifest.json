@@ -44,12 +44,19 @@
     "dependencies": {
       "minUI5Version": "1.120.0",
       "libs": {
-        "sap.fe.core": {},
-        "sap.fe.templates": {}
+        "sap.f": {},
+        "sap.m": {},
+        "sap.ui.core": {},
+        "sap.ui.layout": {},
+        "sap.uxap": {},
+        "sap.suite.ui.microchart": {}
       }
     },
-    "resourceRoots": {
-      "nubexx.billing.employee.ext": "./ext"
+    "rootView": {
+      "viewName": "nubexx.billing.employee.view.App",
+      "type": "XML",
+      "async": true,
+      "id": "appRootView"
     },
     "models": {
       "i18n": {
@@ -67,100 +74,40 @@
       }
     },
     "routing": {
+      "config": {
+        "routerClass": "sap.f.routing.Router",
+        "viewType": "XML",
+        "viewPath": "nubexx.billing.employee.view",
+        "controlId": "appFCL",
+        "controlAggregation": "beginColumnPages",
+        "transition": "slide",
+        "async": true
+      },
       "routes": [
         {
           "pattern": ":?query:",
           "name": "MyTimeEntriesList",
-          "target": "MyTimeEntriesList"
+          "target": ["MyTimeEntriesList"]
         },
         {
           "pattern": "MyTimeEntries({key}):?query:",
-          "name": "MyTimeEntriesDetails",
-          "target": "MyTimeEntriesDetails"
-        },
-        {
-          "pattern": "MyProjectSummary:?query:",
-          "name": "MyProjectSummaryList",
-          "target": "MyProjectSummaryList"
-        },
-        {
-          "pattern": "MyMonthlySummary:?query:",
-          "name": "MyMonthlySummaryList",
-          "target": "MyMonthlySummaryList"
+          "name": "MyTimeEntriesDetail",
+          "target": ["MyTimeEntriesList", "MyTimeEntriesDetail"]
         }
       ],
       "targets": {
         "MyTimeEntriesList": {
-          "type": "Component",
-          "id": "MyTimeEntriesList",
-          "name": "sap.fe.templates.ListReport",
-          "options": {
-            "settings": {
-              "entitySet": "MyTimeEntries",
-              "liveMode": true,
-              "variantManagement": "Page",
-              "navigation": {
-                "MyTimeEntries": {
-                  "detail": {
-                    "route": "MyTimeEntriesDetails"
-                  }
-                }
-              },
-              "controlConfiguration": {
-                "@com.sap.vocabularies.UI.v1.LineItem": {
-                  "tableSettings": {
-                    "type": "ResponsiveTable"
-                  }
-                }
-              }
-            }
-          }
+          "viewName": "MyTimeEntriesList",
+          "viewId": "MyTimeEntriesList",
+          "controlAggregation": "beginColumnPages"
         },
-        "MyTimeEntriesDetails": {
-          "type": "Component",
-          "id": "MyTimeEntriesDetails",
-          "name": "sap.fe.templates.ObjectPage",
-          "options": {
-            "settings": {
-              "entitySet": "MyTimeEntries",
-              "editableHeaderContent": false,
-              "controlConfiguration": {
-                "@com.sap.vocabularies.UI.v1.FieldGroup#Details": {
-                  "formSettings": {
-                    "labelSpan": "L12 M12"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "MyProjectSummaryList": {
-          "type": "Component",
-          "id": "MyProjectSummaryList",
-          "name": "sap.fe.templates.ListReport",
-          "options": {
-            "settings": {
-              "entitySet": "MyProjectSummary",
-              "liveMode": true,
-              "variantManagement": "Page"
-            }
-          }
-        },
-        "MyMonthlySummaryList": {
-          "type": "Component",
-          "id": "MyMonthlySummaryList",
-          "name": "sap.fe.templates.ListReport",
-          "options": {
-            "settings": {
-              "entitySet": "MyMonthlySummary",
-              "liveMode": true,
-              "variantManagement": "Page"
-            }
-          }
+        "MyTimeEntriesDetail": {
+          "viewName": "MyTimeEntriesDetail",
+          "viewId": "MyTimeEntriesDetail",
+          "controlAggregation": "midColumnPages"
         }
       }
     },
-
     "contentDensities": {
       "compact": true,
       "cozy": true

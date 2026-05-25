@@ -2,33 +2,23 @@ using EmployeeService from '../../srv/employee-service';
 
 ////////////////////////////////////////////////////////////////////////////
 //
-//  Service-level Operations
-//
-annotate EmployeeService with @(UI.Operations: [{
-  $Type: 'UI.Operation',
-  Name : 'submitMonth',
-  Label: '{i18n>submitMonth}'
-}]);
-
-////////////////////////////////////////////////////////////////////////////
-//
-//  MyTimeEntries List Report
+//  MyTimeEntries List Report + Object Page
 //
 annotate EmployeeService.MyTimeEntries with @(
-  UI.HeaderInfo                  : {
+  UI.HeaderInfo                                   : {
     TypeName      : '{i18n>TimeEntry}',
     TypeNamePlural: '{i18n>TimeEntries}',
     Title         : {Value: date},
     Description   : {Value: projectName}
   },
 
-  UI.SelectionFields             : [
+  UI.SelectionFields                              : [
     date,
     project_ID,
     status
   ],
 
-  UI.LineItem                    : [
+  UI.LineItem                                     : [
     {
       Value: date,
       Label: '{i18n>Date}'
@@ -54,7 +44,7 @@ annotate EmployeeService.MyTimeEntries with @(
     },
     {
       $Type            : 'UI.DataFieldForAction',
-      Action           : 'EmployeeService.submitMonth',
+      Action           : 'submitMonth',
       Label            : '{i18n>submitMonth}',
       Inline           : false,
       Determining      : true,
@@ -62,15 +52,15 @@ annotate EmployeeService.MyTimeEntries with @(
     }
   ],
 
-  UI.Highlight                   : statusCriticality,
+  UI.Highlight                                    : statusCriticality,
 
-  UI.SelectionPresentationVariant: {
+  UI.SelectionPresentationVariant                 : {
     Text               : '{i18n>MyTimeEntries}',
     SelectionVariant   : {
-      $Type        : 'UI.SelectionVariantType',
-      SelectOptions: []
+      $Type: 'UI.SelectionVariantType'
     },
     PresentationVariant: {
+      $Type         : 'UI.PresentationVariantType',
       SortOrder     : [{
         Property  : date,
         Descending: true
@@ -83,13 +73,34 @@ annotate EmployeeService.MyTimeEntries with @(
     }
   },
 
-  UI.DataPoint #Hours            : {
+  UI.SelectionPresentationVariant #RejectedEntries: {
+    Text               : '{i18n>Rejected}',
+    SelectionVariant   : {
+      $Type        : 'UI.SelectionVariantType',
+      SelectOptions: [{
+        $Type       : 'UI.SelectOptionType',
+        PropertyName: status,
+        Ranges      : [{
+          $Type : 'UI.SelectionRangeType',
+          Sign  : #I,
+          Option: #EQ,
+          Low   : 'R'
+        }]
+      }]
+    },
+    PresentationVariant: {
+      $Type         : 'UI.PresentationVariantType',
+      Visualizations: ['@UI.LineItem']
+    }
+  },
+
+  UI.DataPoint #Hours                             : {
     Value      : hours,
     Title      : '{i18n>Hours}',
     Criticality: statusCriticality
   },
 
-  UI.Chart #HoursByProject       : {
+  UI.Chart #HoursByProject                        : {
     $Type              : 'UI.ChartDefinitionType',
     ChartType          : #Bar,
     Title              : '{i18n>Hours}',
@@ -106,33 +117,44 @@ annotate EmployeeService.MyTimeEntries with @(
       Dimension: projectName,
       Role     : #Category
     }]
-  }
-);
+  },
 
-////////////////////////////////////////////////////////////////////////////
-//
-//  MyTimeEntries Object Page
-//
-annotate EmployeeService.MyTimeEntries with @(
-  UI.HeaderFacets       : [{
-    $Type : 'UI.ReferenceFacet',
-    Target: '@UI.DataPoint#Hours'
-  }],
-
-  UI.Facets             : [
+  UI.HeaderFacets            : [
     {
       $Type : 'UI.ReferenceFacet',
-      Label : '{i18n>Details}',
-      Target: '@UI.FieldGroup#Details'
+      Target: '@UI.DataPoint#Hours'
     },
     {
       $Type : 'UI.ReferenceFacet',
-      Label : '{i18n>SystemInfo}',
-      Target: '@UI.FieldGroup#System'
+      Target: '@UI.DataPoint#Status'
     }
   ],
 
-  UI.FieldGroup #Details: {Data: [
+  UI.DataPoint #Status       : {
+    Value      : status,
+    Title      : '{i18n>Status}',
+    Criticality: statusCriticality
+  },
+
+  UI.Facets                  : [
+    {
+      $Type : 'UI.CollectionFacet',
+      ID    : 'Details',
+      Label : '{i18n>Details}',
+      Facets: [
+        {
+          $Type : 'UI.ReferenceFacet',
+          Target: '@UI.FieldGroup#DetailsLeft'
+        },
+        {
+          $Type : 'UI.ReferenceFacet',
+          Target: '@UI.FieldGroup#DetailsRight'
+        }
+      ]
+    }
+  ],
+
+  UI.FieldGroup #DetailsLeft : {Data: [
     {
       Value: date,
       Label: '{i18n>Date}'
@@ -144,14 +166,14 @@ annotate EmployeeService.MyTimeEntries with @(
     {
       Value: hours,
       Label: '{i18n>Hours}'
-    },
-    {
-      Value: description,
-      Label: '{i18n>Description}'
     }
   ]},
 
-  UI.FieldGroup #System : {Data: [
+  UI.FieldGroup #DetailsRight: {Data: [
+    {
+      Value: description,
+      Label: '{i18n>Description}'
+    },
     {
       Value      : status,
       Label      : '{i18n>Status}',
@@ -160,18 +182,6 @@ annotate EmployeeService.MyTimeEntries with @(
     {
       Value: rejectionNote,
       Label: '{i18n>RejectionNote}'
-    },
-    {
-      Value: month,
-      Label: '{i18n>month}'
-    },
-    {
-      Value: year,
-      Label: '{i18n>year}'
-    },
-    {
-      Value: rateSnapshot,
-      Label: '{i18n>rateSnapshot}'
     }
   ]}
 );
@@ -184,10 +194,11 @@ annotate EmployeeService.MyTimeEntries with {
   ID                 @UI.Hidden;
   employee_ID        @UI.Hidden;
   employeeExternalId @UI.Hidden;
-  month              @readonly;
-  year               @readonly;
-  rateSnapshot       @readonly;
+  month              @UI.Hidden;
+  year               @UI.Hidden;
+  rateSnapshot       @UI.Hidden;
   statusCriticality  @UI.Hidden;
+  statusText         @UI.Hidden;
   project_ID         @(
     Common: {
       Text           : projectName,
@@ -218,7 +229,14 @@ annotate EmployeeService.MyTimeEntries with {
   date               @title: '{i18n>Date}';
   hours              @title: '{i18n>Hours}';
   description        @title: '{i18n>Description}'  @UI.MultiLineText;
-  status             @title: '{i18n>Status}';
+  status             @(
+    title: '{i18n>Status}',
+    Common: {
+      Text           : statusText,
+      TextArrangement: #TextOnly,
+      ValueListWithFixedValues
+    }
+  );
 };
 
 ////////////////////////////////////////////////////////////////////////////
@@ -248,7 +266,6 @@ annotate EmployeeService.MyProjects with @(
 );
 
 annotate EmployeeService.MyProjects with {
-  ID                @UI.Hidden;
   manager_ID        @UI.Hidden;
   managerExternalId @UI.Hidden;
   assignments       @UI.Hidden;
@@ -302,11 +319,11 @@ annotate EmployeeService.Employees with {
 //  MyProjectSummary List Report
 //
 annotate EmployeeService.MyProjectSummary with @(
-  UI.HeaderInfo: {
+  UI.HeaderInfo                           : {
     TypeName      : '{i18n>MyProjectSummary}',
     TypeNamePlural: '{i18n>MyProjectSummary}'
   },
-  UI.LineItem  : [
+  UI.LineItem                             : [
     {
       Value: projectName,
       Label: '{i18n>Project}'
@@ -319,7 +336,31 @@ annotate EmployeeService.MyProjectSummary with @(
       Value: entryCount,
       Label: '{i18n>entryCount}'
     }
-  ]
+  ],
+
+  UI.PresentationVariant #ProjectSummaryPV: {
+    $Type         : 'UI.PresentationVariantType',
+    Visualizations: ['@UI.Chart#ProjectHoursDonut']
+  },
+
+  UI.Chart #ProjectHoursDonut             : {
+    $Type              : 'UI.ChartDefinitionType',
+    ChartType          : #Donut,
+    Title              : '{i18n>Hours}',
+    Description        : '{i18n>Project}',
+    Measures           : [totalHours],
+    MeasureAttributes  : [{
+      $Type  : 'UI.ChartMeasureAttributeType',
+      Measure: totalHours,
+      Role   : #Axis1
+    }],
+    Dimensions         : [projectName],
+    DimensionAttributes: [{
+      $Type    : 'UI.ChartDimensionAttributeType',
+      Dimension: projectName,
+      Role     : #Category
+    }]
+  }
 );
 
 annotate EmployeeService.MyProjectSummary with {
@@ -335,11 +376,11 @@ annotate EmployeeService.MyProjectSummary with {
 //  MyMonthlySummary List Report
 //
 annotate EmployeeService.MyMonthlySummary with @(
-  UI.HeaderInfo                  : {
+  UI.HeaderInfo                           : {
     TypeName      : '{i18n>MyMonthlySummary}',
     TypeNamePlural: '{i18n>MyMonthlySummary}'
   },
-  UI.LineItem                    : [
+  UI.LineItem                             : [
     {
       Value: year,
       Label: '{i18n>year}'
@@ -358,13 +399,13 @@ annotate EmployeeService.MyMonthlySummary with @(
     }
   ],
 
-  UI.SelectionPresentationVariant: {
+  UI.SelectionPresentationVariant         : {
     Text               : '{i18n>MyMonthlySummary}',
     SelectionVariant   : {
-      $Type        : 'UI.SelectionVariantType',
-      SelectOptions: []
+      $Type: 'UI.SelectionVariantType'
     },
     PresentationVariant: {
+      $Type         : 'UI.PresentationVariantType',
       SortOrder     : [
         {
           Property  : year,
@@ -382,9 +423,43 @@ annotate EmployeeService.MyMonthlySummary with @(
     }
   },
 
-  UI.Chart #HoursByMonth         : {
+  UI.PresentationVariant #MonthlySummaryPV: {
+    $Type         : 'UI.PresentationVariantType',
+    Visualizations: ['@UI.Chart#MonthlyHoursColumn']
+  },
+
+  UI.Chart #HoursByMonth                  : {
     $Type              : 'UI.ChartDefinitionType',
     ChartType          : #Line,
+    Title              : '{i18n>Hours}',
+    Description        : '{i18n>MyMonthlySummary}',
+    Measures           : [totalHours],
+    MeasureAttributes  : [{
+      $Type  : 'UI.ChartMeasureAttributeType',
+      Measure: totalHours,
+      Role   : #Axis1
+    }],
+    Dimensions         : [
+      year,
+      month
+    ],
+    DimensionAttributes: [
+      {
+        $Type    : 'UI.ChartDimensionAttributeType',
+        Dimension: year,
+        Role     : #Category
+      },
+      {
+        $Type    : 'UI.ChartDimensionAttributeType',
+        Dimension: month,
+        Role     : #Category
+      }
+    ]
+  },
+
+  UI.Chart #MonthlyHoursColumn            : {
+    $Type              : 'UI.ChartDefinitionType',
+    ChartType          : #Column,
     Title              : '{i18n>Hours}',
     Description        : '{i18n>MyMonthlySummary}',
     Measures           : [totalHours],

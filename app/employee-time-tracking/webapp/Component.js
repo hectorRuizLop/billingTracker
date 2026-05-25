@@ -1,12 +1,17 @@
-"use strict";
+sap.ui.define([
+  "sap/ui/core/UIComponent",
+  "sap/ui/model/json/JSONModel"
+], function (UIComponent, JSONModel) {
+  "use strict";
 
-sap.ui.define(
-  ["sap/fe/core/AppComponent"],
-  function (AppComponent) {
-    return AppComponent.extend("nubexx.billing.employee.Component", {
-      metadata: {
-        manifest: "json",
-      },
-    });
-  },
-);
+  return UIComponent.extend("nubexx.billing.employee.Component", {
+    metadata: {
+      manifest: "json"
+    },
+
+    init: function () {
+      UIComponent.prototype.init.apply(this, arguments);
+      this.getRouter().initialize();
+    }
+  });
+});
