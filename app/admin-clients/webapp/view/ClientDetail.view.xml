@@ -1,0 +1,33 @@
+<mvc:View
+  controllerName="nubexx.billing.admin.clients.controller.ClientDetail"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:core="sap.ui.core"
+  xmlns:form="sap.ui.layout.form">
+  <Page id="clientDetailPage" title="{name}" showNavButton="true" navButtonPress=".onNavBack">
+    <content>
+      <form:SimpleForm title="{i18n>ContactInfo}" layout="ResponsiveGridLayout" columnsL="2" columnsM="1">
+        <form:content>
+          <Label text="{i18n>ClientName}"/>
+          <Text text="{name}"/>
+          <Label text="{i18n>Email}"/>
+          <Text text="{email}"/>
+          <Label text="{i18n>Phone}"/>
+          <Text text="{phone}"/>
+          <Label text="{i18n>ContactName}"/>
+          <Text text="{contactName}"/>
+        </form:content>
+      </form:SimpleForm>
+      <form:SimpleForm title="{i18n>Address}" layout="ResponsiveGridLayout" columnsL="2" columnsM="1">
+        <form:content>
+          <Label text="{i18n>Address}"/>
+          <Text text="{address}"/>
+          <Label text="{i18n>TaxId}"/>
+          <Text text="{taxId}"/>
+          <Label text="{i18n>Notes}"/>
+          <Text text="{notes}"/>
+        </form:content>
+      </form:SimpleForm>
+    </content>
+  </Page>
+</mvc:View>
