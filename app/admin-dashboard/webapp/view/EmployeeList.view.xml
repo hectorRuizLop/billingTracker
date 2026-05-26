@@ -1,0 +1,125 @@
+<mvc:View
+  controllerName="nubexx.billing.admin.controller.EmployeeList"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:f="sap.f"
+  xmlns:core="sap.ui.core"
+  xmlns:layout="sap.ui.layout"
+  xmlns:microchart="sap.suite.ui.microchart">
+
+  <f:DynamicPage id="employeeDynamicPage" headerExpanded="true">
+    <f:title>
+      <f:DynamicPageTitle>
+        <f:heading>
+          <Title text="{i18n>Employees}" />
+        </f:heading>
+      </f:DynamicPageTitle>
+    </f:title>
+
+    <f:header>
+      <f:DynamicPageHeader pinnable="true">
+        <f:content>
+          <HBox justifyContent="SpaceBetween" alignItems="Center">
+            <HBox>
+              <VBox class="sapUiMediumMarginEnd" alignItems="Center">
+                <NumericContent
+                  icon="sap-icon://employee"
+                  value="{kpiModel>/total}"
+                  valueColor="Good"
+                  withMargin="false" />
+                <Text text="Total" class="sapUiTinyMarginTop" />
+              </VBox>
+              <VBox class="sapUiMediumMarginEnd" alignItems="Center">
+                <NumericContent
+                  icon="sap-icon://accept"
+                  value="{kpiModel>/active}"
+                  valueColor="Good"
+                  withMargin="false" />
+                <Text text="Active" class="sapUiTinyMarginTop" />
+              </VBox>
+              <VBox alignItems="Center">
+                <NumericContent
+                  icon="sap-icon://manager"
+                  value="{kpiModel>/managers}"
+                  valueColor="Critical"
+                  withMargin="false" />
+                <Text text="Managers" class="sapUiTinyMarginTop" />
+              </VBox>
+            </HBox>
+          </HBox>
+        </f:content>
+      </f:DynamicPageHeader>
+    </f:header>
+
+    <f:content>
+      <VBox>
+        <!-- Filter Toolbar -->
+        <Toolbar class="sapUiSmallMargin">
+          <SearchField id="searchField" search=".onSearch" width="25%" placeholder="Search employees..." />
+          <ToolbarSpacer />
+          <SegmentedButton id="roleFilter" selectedKey="all" selectionChange=".onRoleFilterChange">
+            <items>
+              <SegmentedButtonItem key="all" text="All ({filterCountModel>/all})" />
+              <SegmentedButtonItem key="E" text="Employee ({filterCountModel>/employee})" />
+              <SegmentedButtonItem key="M" text="Manager ({filterCountModel>/manager})" />
+              <SegmentedButtonItem key="A" text="Admin ({filterCountModel>/admin})" />
+            </items>
+          </SegmentedButton>
+          <ToggleButton id="activeFilter" text="Active Only" press=".onActiveFilterChange" />
+        </Toolbar>
+
+        <!-- Employee Table -->
+        <Table
+          id="employeeTable"
+          items="{path:'/Employees', parameters:{$count:true, $expand:'assignments'}}"
+          growing="true"
+          growingThreshold="20">
+          <columns>
+            <Column width="30%"><Text text="Employee"/></Column>
+            <Column><Text text="Role"/></Column>
+            <Column><Text text="Category"/></Column>
+            <Column width="8rem" hAlign="Center"><Text text="Active"/></Column>
+            <Column width="8rem" hAlign="Center"><Text text="Load"/></Column>
+          </columns>
+          <items>
+            <ColumnListItem type="Navigation" press=".onPress">
+              <cells>
+                <!-- Avatar + Name + Email -->
+                <HBox alignItems="Center">
+                  <Avatar
+                    initials="{parts:[{path:'firstName'},{path:'lastName'}], formatter:'.formatInitials'}"
+                    displaySize="S"
+                    class="sapUiSmallMarginEnd" />
+                  <ObjectIdentifier
+                    title="{fullName}"
+                    text="{email}" />
+                </HBox>
+
+                <!-- Role -->
+                <Text text="{roleText}" />
+
+                <!-- Category with semantic color -->
+                <ObjectStatus
+                  text="{categoryName}"
+                  state="{path:'categoryName', formatter:'.formatCategoryState'}"
+                  inverted="true" />
+
+                <!-- Active indicator -->
+                <core:Icon
+                  src="{= ${isActive} ? 'sap-icon://accept' : 'sap-icon://decline'}"
+                  color="{= ${isActive} ? '#107e3e' : '#bb0000'}" />
+
+                <!-- Project load -->
+                <ProgressIndicator
+                  percentValue="{path:'', formatter:'.formatAssignmentLoad'}"
+                  displayValue="{path:'', formatter:'.formatAssignmentCount'}"
+                  width="80px"
+                  state="None" />
+              </cells>
+            </ColumnListItem>
+          </items>
+        </Table>
+      </VBox>
+    </f:content>
+  </f:DynamicPage>
+</mvc:View>

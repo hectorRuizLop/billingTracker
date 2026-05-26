@@ -1,0 +1,13 @@
+<mvc:View
+  controllerName="nubexx.billing.admin.controller.App"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.f">
+  <FlexibleColumnLayout id="appFCL" layout="OneColumn" backgroundDesign="Solid">
+    <beginColumnPages>
+      <mvc:XMLView id="beginView" viewName="nubexx.billing.admin.view.EmployeeList"/>
+    </beginColumnPages>
+    <midColumnPages>
+      <mvc:XMLView id="midView" viewName="nubexx.billing.admin.view.EmployeeDetail"/>
+    </midColumnPages>
+  </FlexibleColumnLayout>
+</mvc:View>

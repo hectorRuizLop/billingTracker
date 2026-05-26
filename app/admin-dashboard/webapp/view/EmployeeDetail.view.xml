@@ -1,0 +1,174 @@
+<mvc:View
+  controllerName="nubexx.billing.admin.controller.EmployeeDetail"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:core="sap.ui.core"
+  xmlns:uxap="sap.uxap"
+  xmlns:f="sap.f"
+  xmlns:card="sap.f.cards">
+
+  <uxap:ObjectPageLayout
+    id="employeeObjectPage"
+    showTitleInHeaderContent="true"
+    upperCaseAnchorBar="false">
+
+    <uxap:headerTitle>
+      <uxap:ObjectPageDynamicHeaderTitle>
+        <uxap:expandedHeading>
+          <HBox alignItems="Center">
+            <Avatar
+              initials="{parts:[{path:'firstName'},{path:'lastName'}], formatter:'.formatInitials'}"
+              displaySize="L"
+              class="sapUiMediumMarginEnd" />
+            <VBox>
+              <Title text="{fullName}" titleStyle="H3" />
+              <Text text="ID: {externalId}" class="sapUiTinyMarginTop" />
+            </VBox>
+          </HBox>
+        </uxap:expandedHeading>
+        <uxap:snappedHeading>
+          <HBox alignItems="Center">
+            <Avatar
+              initials="{parts:[{path:'firstName'},{path:'lastName'}], formatter:'.formatInitials'}"
+              displaySize="M"
+              class="sapUiSmallMarginEnd" />
+            <Title text="{fullName}" titleStyle="H4" />
+          </HBox>
+        </uxap:snappedHeading>
+        <uxap:actions>
+          <Button text="Edit" type="Transparent" icon="sap-icon://edit" />
+          <Button text="Deactivate" type="Reject" icon="sap-icon://deactivate" />
+        </uxap:actions>
+      </uxap:ObjectPageDynamicHeaderTitle>
+    </uxap:headerTitle>
+
+    <uxap:headerContent>
+      <HBox justifyContent="SpaceBetween" alignItems="Center">
+        <VBox>
+          <ObjectStatus text="{roleText}" state="{= ${role} === 'A' ? 'Success' : ${role} === 'M' ? 'Warning' : 'Information'}" />
+          <ObjectStatus text="{categoryName}" class="sapUiTinyMarginTop" />
+        </VBox>
+        <ObjectNumber
+          number="{= ${assignments} ? ${assignments}.length : 0 }"
+          unit="Projects"
+          state="Success"
+          emphasized="true" />
+      </HBox>
+    </uxap:headerContent>
+
+    <uxap:sections>
+      <uxap:ObjectPageSection titleUppercase="false" title="Personal Information">
+        <uxap:subSections>
+          <uxap:ObjectPageSubSection>
+            <f:Card class="sapUiMediumMargin">
+              <f:header>
+                <card:Header title="Contact Details" iconSrc="sap-icon://contact" />
+              </f:header>
+              <f:content>
+                <VBox class="sapUiSmallMargin">
+                  <HBox class="sapUiTinyMarginBottom">
+                    <Label text="First Name:" width="100px" design="Bold" />
+                    <Text text="{firstName}" />
+                  </HBox>
+                  <HBox class="sapUiTinyMarginBottom">
+                    <Label text="Last Name:" width="100px" design="Bold" />
+                    <Text text="{lastName}" />
+                  </HBox>
+                  <HBox class="sapUiTinyMarginBottom">
+                    <Label text="Email:" width="100px" design="Bold" />
+                    <Text text="{email}" />
+                  </HBox>
+                  <HBox class="sapUiTinyMarginBottom">
+                    <Label text="Phone:" width="100px" design="Bold" />
+                    <Text text="{phone}" />
+                  </HBox>
+                </VBox>
+              </f:content>
+            </f:Card>
+          </uxap:ObjectPageSubSection>
+        </uxap:subSections>
+      </uxap:ObjectPageSection>
+
+      <uxap:ObjectPageSection titleUppercase="false" title="Work Information">
+        <uxap:subSections>
+          <uxap:ObjectPageSubSection>
+            <f:Card class="sapUiMediumMargin">
+              <f:header>
+                <card:Header title="Work Details" iconSrc="sap-icon://business-card" />
+              </f:header>
+              <f:content>
+                <VBox class="sapUiSmallMargin">
+                  <HBox class="sapUiTinyMarginBottom">
+                    <Label text="Role:" width="100px" design="Bold" />
+                    <ObjectStatus
+                      text="{= ${role} === 'E' ? 'Employee' : ${role} === 'M' ? 'Manager' : ${role} === 'A' ? 'Admin' : ${role}}"
+                      state="{= ${role} === 'A' ? 'Success' : ${role} === 'M' ? 'Warning' : 'Information'}" />
+                  </HBox>
+                  <HBox class="sapUiTinyMarginBottom">
+                    <Label text="Status:" width="100px" design="Bold" />
+                    <core:Icon
+                      src="{= ${isActive} ? 'sap-icon://accept' : 'sap-icon://decline'}"
+                      color="{= ${isActive} ? '#107e3e' : '#bb0000'}" />
+                    <Text text="{= ${isActive} ? ' Active' : ' Inactive'}" class="sapUiTinyMarginBegin" />
+                  </HBox>
+                  <HBox class="sapUiTinyMarginBottom">
+                    <Label text="Category:" width="100px" design="Bold" />
+                    <Text text="{categoryName}" />
+                  </HBox>
+                  <HBox class="sapUiTinyMarginBottom">
+                    <Label text="External ID:" width="100px" design="Bold" />
+                    <Text text="{externalId}" />
+                  </HBox>
+                </VBox>
+              </f:content>
+            </f:Card>
+          </uxap:ObjectPageSubSection>
+        </uxap:subSections>
+      </uxap:ObjectPageSection>
+
+      <uxap:ObjectPageSection titleUppercase="false" title="Managed Projects">
+        <uxap:subSections>
+          <uxap:ObjectPageSubSection>
+            <f:Card class="sapUiMediumMargin">
+              <f:header>
+                <card:Header title="Projects" iconSrc="sap-icon://project-definition-triangle" />
+              </f:header>
+              <f:content>
+                <List
+                  items="{managedProjects}"
+                  noDataText="No managed projects">
+                  <StandardListItem
+                    title="{name}"
+                    description="{clientName}"
+                    icon="sap-icon://project-definition-triangle" />
+                </List>
+              </f:content>
+            </f:Card>
+          </uxap:ObjectPageSubSection>
+        </uxap:subSections>
+      </uxap:ObjectPageSection>
+
+      <uxap:ObjectPageSection titleUppercase="false" title="Current Assignments">
+        <uxap:subSections>
+          <uxap:ObjectPageSubSection>
+            <f:Card class="sapUiMediumMargin">
+              <f:header>
+                <card:Header title="Assignments" iconSrc="sap-icon://employee-lookup" />
+              </f:header>
+              <f:content>
+                <List
+                  items="{assignments}"
+                  noDataText="No current assignments">
+                  <StandardListItem
+                    title="{projectName}"
+                    description="{= ${isActive} ? 'Active since ' + ${assignedAt} : 'Inactive'}"
+                    icon="sap-icon://work-history" />
+                </List>
+              </f:content>
+            </f:Card>
+          </uxap:ObjectPageSubSection>
+        </uxap:subSections>
+      </uxap:ObjectPageSection>
+    </uxap:sections>
+  </uxap:ObjectPageLayout>
+</mvc:View>
