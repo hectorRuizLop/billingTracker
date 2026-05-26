@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Projects</title>
+  <style>
+    html, body, #content, #content > [data-sap-ui-component],
+    [data-sap-ui-area], #container, #container-uiarea,
+    .sapUiView, .sapMNav, .sapUiComponentContainer {
+      height: 100%; width: 100%; margin: 0;
+    }
+  </style>
+  <script src="https://ui5.sap.com/resources/sap-ui-core.js"
+    data-sap-ui-theme="sap_horizon"
+    data-sap-ui-libs="sap.m,sap.fe.core,sap.fe.templates"
+    data-sap-ui-compatVersion="edge"
+    data-sap-ui-async="true"
+    data-sap-ui-preload="off"
+    data-sap-ui-oninit="module:sap/ui/core/ComponentSupport"
+    data-sap-ui-resourceroots='{"nubexx.billing.admin.projects":"./"}'>
+  </script>
+</head>
+<body class="sapUiBody" id="content">
+  <div data-sap-ui-component data-name="nubexx.billing.admin.projects"
+    data-id="container" data-settings='{"id":"admin-projects"}'>
+  </div>
+</body>
+</html>

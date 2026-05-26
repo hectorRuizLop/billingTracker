@@ -1,0 +1,90 @@
+<mvc:View
+  controllerName="nubexx.billing.admin.projects.controller.ProjectDetail"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:core="sap.ui.core"
+  xmlns:form="sap.ui.layout.form">
+  <Page id="projectDetailPage" title="{name}" showNavButton="true" navButtonPress=".onNavBack">
+    <content>
+      <form:SimpleForm title="{i18n>Details}" layout="ResponsiveGridLayout" columnsL="2" columnsM="1">
+        <form:content>
+          <Label text="{i18n>ProjectName}"/>
+          <Text text="{name}"/>
+          <Label text="{i18n>Description}"/>
+          <Text text="{description}"/>
+          <Label text="{i18n>Status}"/>
+          <Text text="{status}"/>
+          <Label text="{i18n>Client}"/>
+          <Text text="{client/name}"/>
+        </form:content>
+      </form:SimpleForm>
+      <form:SimpleForm title="{i18n>Financials}" layout="ResponsiveGridLayout" columnsL="2" columnsM="1">
+        <form:content>
+          <Label text="{i18n>Budget}"/>
+          <Text text="{budget}"/>
+          <Label text="{i18n>StartDate}"/>
+          <Text text="{startDate}"/>
+          <Label text="{i18n>EndDate}"/>
+          <Text text="{endDate}"/>
+        </form:content>
+      </form:SimpleForm>
+      <Table
+        id="assignmentsTable"
+        items="{assignments}"
+        growing="true"
+        growingScrollToLoad="true">
+        <headerToolbar>
+          <Toolbar>
+            <Title text="{i18n>Assignments}"/>
+          </Toolbar>
+        </headerToolbar>
+        <columns>
+          <Column><Text text="{i18n>EmployeeName}"/></Column>
+          <Column><Text text="{i18n>CategoryName}"/></Column>
+          <Column><Text text="{i18n>AssignedAt}"/></Column>
+          <Column><Text text="{i18n>IsActive}"/></Column>
+        </columns>
+        <items>
+          <ColumnListItem>
+            <cells>
+              <Text text="{employeeName}"/>
+              <Text text="{categoryName}"/>
+              <Text text="{assignedAt}"/>
+              <core:Icon src="{= ${isActive} ? 'sap-icon://accept' : 'sap-icon://decline'}" 
+                         color="{= ${isActive} ? '#107e3e' : '#bb0000'}"/>
+            </cells>
+          </ColumnListItem>
+        </items>
+      </Table>
+      <Table
+        id="timeEntriesTable"
+        items="{timeEntries}"
+        growing="true"
+        growingScrollToLoad="true">
+        <headerToolbar>
+          <Toolbar>
+            <Title text="{i18n>TimeEntries}"/>
+          </Toolbar>
+        </headerToolbar>
+        <columns>
+          <Column><Text text="{i18n>Date}"/></Column>
+          <Column><Text text="{i18n>EmployeeName}"/></Column>
+          <Column><Text text="{i18n>Hours}"/></Column>
+          <Column><Text text="{i18n>Status}"/></Column>
+          <Column><Text text="{i18n>Cost}"/></Column>
+        </columns>
+        <items>
+          <ColumnListItem>
+            <cells>
+              <Text text="{date}"/>
+              <Text text="{employeeName}"/>
+              <Text text="{hours}"/>
+              <Text text="{status}"/>
+              <Text text="{cost}"/>
+            </cells>
+          </ColumnListItem>
+        </items>
+      </Table>
+    </content>
+  </Page>
+</mvc:View>
