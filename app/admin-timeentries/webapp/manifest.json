@@ -1,0 +1,119 @@
+{
+  "_version": "1.60.0",
+  "sap.app": {
+    "id": "nubexx.billing.admin.timeentries",
+    "type": "application",
+    "title": "{{appTitle}}",
+    "description": "{{appDescription}}",
+    "i18n": "i18n/i18n.properties",
+    "applicationVersion": {
+      "version": "1.0.0"
+    },
+    "dataSources": {
+      "AdminService": {
+        "uri": "/api/admin/",
+        "type": "OData",
+        "settings": {
+          "odataVersion": "4.0"
+        }
+      }
+    },
+    "crossNavigation": {
+      "inbounds": {
+        "admin-timeentries": {
+          "semanticObject": "AdminTimeEntries",
+          "action": "manage",
+          "title": "{{appTitle}}",
+          "signature": {
+            "parameters": {},
+            "additionalParameters": "allowed"
+          }
+        }
+      }
+    }
+  },
+  "sap.ui": {
+    "technology": "UI5",
+    "deviceTypes": {
+      "desktop": true,
+      "tablet": true,
+      "phone": true
+    }
+  },
+  "sap.ui5": {
+    "dependencies": {
+      "minUI5Version": "1.120.0",
+      "libs": {
+        "sap.f": {},
+        "sap.m": {},
+        "sap.ui.core": {},
+        "sap.ui.layout": {},
+        "sap.uxap": {}
+      }
+    },
+    "rootView": {
+      "viewName": "nubexx.billing.admin.timeentries.view.App",
+      "type": "XML",
+      "async": true,
+      "id": "appRootView"
+    },
+    "models": {
+      "i18n": {
+        "type": "sap.ui.model.resource.ResourceModel",
+        "uri": "i18n/i18n.properties"
+      },
+      "": {
+        "dataSource": "AdminService",
+        "settings": {
+          "synchronizationMode": "None",
+          "operationMode": "Server",
+          "autoExpandSelect": true,
+          "earlyRequests": true
+        }
+      }
+    },
+    "routing": {
+      "config": {
+        "routerClass": "sap.f.routing.Router",
+        "viewType": "XML",
+        "viewPath": "nubexx.billing.admin.timeentries.view",
+        "controlId": "appFCL",
+        "controlAggregation": "beginColumnPages",
+        "transition": "slide",
+        "async": true
+      },
+      "routes": [
+        {
+          "pattern": ":?query:",
+          "name": "TimeEntryList",
+          "target": ["TimeEntryList"]
+        },
+        {
+          "pattern": "TimeEntries({key}):?query:",
+          "name": "TimeEntryDetail",
+          "target": ["TimeEntryList", "TimeEntryDetail"]
+        }
+      ],
+      "targets": {
+        "TimeEntryList": {
+          "viewName": "TimeEntryList",
+          "viewId": "TimeEntryList",
+          "controlAggregation": "beginColumnPages"
+        },
+        "TimeEntryDetail": {
+          "viewName": "TimeEntryDetail",
+          "viewId": "TimeEntryDetail",
+          "controlAggregation": "midColumnPages"
+        }
+      }
+    },
+    "contentDensities": {
+      "compact": true,
+      "cozy": true
+    }
+  },
+  "sap.fiori": {
+    "registrationIds": [],
+    "archeType": "transactional"
+  }
+}

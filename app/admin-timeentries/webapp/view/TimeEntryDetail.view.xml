@@ -1,0 +1,39 @@
+<mvc:View
+  controllerName="nubexx.billing.admin.timeentries.controller.TimeEntryDetail"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:core="sap.ui.core"
+  xmlns:form="sap.ui.layout.form">
+  <Page id="timeEntryDetailPage" title="{date}" showNavButton="true" navButtonPress=".onNavBack">
+    <content>
+      <form:SimpleForm title="{i18n>EntryDetails}" layout="ResponsiveGridLayout" columnsL="2" columnsM="1">
+        <form:content>
+          <Label text="{i18n>Date}"/>
+          <Text text="{date}"/>
+          <Label text="{i18n>Employee}"/>
+          <Text text="{employeeName}"/>
+          <Label text="{i18n>Project}"/>
+          <Text text="{projectName}"/>
+          <Label text="{i18n>Hours}"/>
+          <Text text="{hours}"/>
+          <Label text="{i18n>Description}"/>
+          <Text text="{description}"/>
+          <Label text="{i18n>Cost}"/>
+          <Text text="{cost}"/>
+        </form:content>
+      </form:SimpleForm>
+      <form:SimpleForm title="{i18n>ReviewInfo}" layout="ResponsiveGridLayout" columnsL="2" columnsM="1">
+        <form:content>
+          <Label text="{i18n>Status}"/>
+          <Text text="{status}"/>
+          <Label text="{i18n>ReviewedAt}"/>
+          <Text text="{reviewedAt}"/>
+          <Label text="{i18n>ReviewedBy}"/>
+          <Text text="{reviewedBy}"/>
+          <Label text="{i18n>RejectionNote}"/>
+          <Text text="{rejectionNote}"/>
+        </form:content>
+      </form:SimpleForm>
+    </content>
+  </Page>
+</mvc:View>
