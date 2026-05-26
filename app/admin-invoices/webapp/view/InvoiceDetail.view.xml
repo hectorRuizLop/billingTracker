@@ -1,0 +1,66 @@
+<mvc:View
+  controllerName="nubexx.billing.admin.invoices.controller.InvoiceDetail"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:core="sap.ui.core"
+  xmlns:form="sap.ui.layout.form">
+  <Page id="invoiceDetailPage" title="{invoiceNumber}" showNavButton="true" navButtonPress=".onNavBack">
+    <content>
+      <form:SimpleForm title="{i18n>Header}" layout="ResponsiveGridLayout" columnsL="2" columnsM="1">
+        <form:content>
+          <Label text="{i18n>InvoiceNumber}"/>
+          <Text text="{invoiceNumber}"/>
+          <Label text="{i18n>IssueDate}"/>
+          <Text text="{issueDate}"/>
+          <Label text="{i18n>DueDate}"/>
+          <Text text="{dueDate}"/>
+          <Label text="{i18n>Status}"/>
+          <Text text="{status}"/>
+          <Label text="{i18n>Client}"/>
+          <Text text="{client/name}"/>
+        </form:content>
+      </form:SimpleForm>
+      <form:SimpleForm title="{i18n>Totals}" layout="ResponsiveGridLayout" columnsL="2" columnsM="1">
+        <form:content>
+          <Label text="{i18n>Subtotal}"/>
+          <Text text="{subtotal}"/>
+          <Label text="{i18n>TaxAmount}"/>
+          <Text text="{taxAmount}"/>
+          <Label text="{i18n>Total}"/>
+          <Text text="{total}"/>
+          <Label text="{i18n>TaxRate}"/>
+          <Text text="{taxRate}"/>
+          <Label text="{i18n>Currency}"/>
+          <Text text="{currency}"/>
+        </form:content>
+      </form:SimpleForm>
+      <Table
+        id="linesTable"
+        items="{lines}"
+        growing="true"
+        growingScrollToLoad="true">
+        <headerToolbar>
+          <Toolbar>
+            <Title text="{i18n>Lines}"/>
+          </Toolbar>
+        </headerToolbar>
+        <columns>
+          <Column><Text text="{i18n>Description}"/></Column>
+          <Column><Text text="{i18n>Quantity}"/></Column>
+          <Column><Text text="{i18n>UnitPrice}"/></Column>
+          <Column><Text text="{i18n>LineTotal}"/></Column>
+        </columns>
+        <items>
+          <ColumnListItem>
+            <cells>
+              <Text text="{description}"/>
+              <Text text="{quantity}"/>
+              <Text text="{unitPrice}"/>
+              <Text text="{lineTotal}"/>
+            </cells>
+          </ColumnListItem>
+        </items>
+      </Table>
+    </content>
+  </Page>
+</mvc:View>
