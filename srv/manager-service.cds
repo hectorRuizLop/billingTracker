@@ -62,6 +62,9 @@ service ManagerService @(path: '/api/manager')@(requires: 'Manager') {
       @readonly reviewedAt,
       @readonly reviewedBy,
       @readonly rejectionNote,
+      isOvertime,
+      overtimeHours,
+      overtimeJustification,
       case
         status
         when 'R'

@@ -106,6 +106,9 @@ service EmployeeService @(path: '/api/employee')@(requires: [
           @readonly month,
           @readonly year                            : String,
           @readonly rateSnapshot                    : Decimal(15, 2),
+          isOvertime,
+          overtimeHours,
+          overtimeJustification,
           case status
             when 'D' then 'Draft'
             when 'S' then 'Submitted'
@@ -153,5 +156,32 @@ service EmployeeService @(path: '/api/employee')@(requires: [
         entryCount : Integer;
   };
 
+  @readonly
+  entity MyCalendarDays {
+    key date       : Date;
+        totalHours : Decimal(4, 2);
+        hasEntries : Boolean;
+        dayType    : String(10); // 'weekday' | 'weekend'
+  };
+
+  function getCalendarDays(year: Integer, month: Integer) returns array of MyCalendarDays;
+
+  // Employee notifications (populated by custom handler)
+  @readonly
+  entity MyNotifications {
+    key ID                   : UUID;
+        type                 : String(50);
+        subject              : String(200);
+        message              : String(1000);
+        sentAt               : Timestamp;
+        status               : String(1);
+        isRead               : Boolean;
+        channel              : String(20);
+        externalNotificationId : String(100);
+        recipient_ID         : UUID;
+        recipientExternalId  : String;
+  };
+
   action submitMonth(year: Integer, month: Integer) returns String;
+  action markNotificationRead(notificationId: UUID) returns String;
 }

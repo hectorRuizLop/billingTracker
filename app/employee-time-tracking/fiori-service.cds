@@ -182,6 +182,15 @@ annotate EmployeeService.MyTimeEntries with @(
     {
       Value: rejectionNote,
       Label: '{i18n>RejectionNote}'
+    },
+    {
+      Value: overtimeHours,
+      Label: '{i18n>OvertimeHours}'
+    },
+    {
+      Value: overtimeJustification,
+      Label: '{i18n>OvertimeJustification}',
+      @UI.MultiLineText
     }
   ]}
 );
@@ -237,6 +246,9 @@ annotate EmployeeService.MyTimeEntries with {
       ValueListWithFixedValues
     }
   );
+  isOvertime         @title: '{i18n>Overtime}';
+  overtimeHours      @title: '{i18n>OvertimeHours}';
+  overtimeJustification @title: '{i18n>OvertimeJustification}' @UI.MultiLineText;
 };
 
 ////////////////////////////////////////////////////////////////////////////
@@ -493,4 +505,54 @@ annotate EmployeeService.MyMonthlySummary with {
   month      @title: '{i18n>month}';
   totalHours @title: '{i18n>Hours}';
   entryCount @title: '{i18n>entryCount}';
+};
+
+////////////////////////////////////////////////////////////////////////////
+//
+//  MyNotifications List Report
+//
+annotate EmployeeService.MyNotifications with @(
+  UI.HeaderInfo     : {
+    TypeName      : '{i18n>Notification}',
+    TypeNamePlural: '{i18n>Notifications}'
+  },
+  UI.LineItem       : [
+    {
+      Value: subject,
+      Label: '{i18n>Subject}'
+    },
+    {
+      Value: message,
+      Label: '{i18n>Message}'
+    },
+    {
+      Value: sentAt,
+      Label: '{i18n>SentAt}'
+    },
+    {
+      Value: isRead,
+      Label: '{i18n>Read}'
+    },
+    {
+      $Type            : 'UI.DataFieldForAction',
+      Action           : 'markNotificationRead',
+      Label            : '{i18n>MarkAsRead}',
+      Inline           : false,
+      Determining      : true
+    }
+  ]
+);
+
+annotate EmployeeService.MyNotifications with {
+  ID                   @UI.Hidden;
+  recipient_ID         @UI.Hidden;
+  recipientExternalId  @UI.Hidden;
+  externalNotificationId @UI.Hidden;
+  type                 @title: '{i18n>Type}';
+  subject              @title: '{i18n>Subject}';
+  message              @title: '{i18n>Message}' @UI.MultiLineText;
+  sentAt               @title: '{i18n>SentAt}';
+  status               @title: '{i18n>Status}';
+  isRead               @title: '{i18n>Read}';
+  channel              @title: '{i18n>Channel}';
 };

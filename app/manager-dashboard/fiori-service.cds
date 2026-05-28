@@ -350,7 +350,8 @@ annotate ManagerService.TimeEntries with @(
   UI.SelectionFields             : [
     project,
     status,
-    date
+    date,
+    isOvertime
   ],
 
   UI.LineItem                    : [
@@ -395,6 +396,16 @@ annotate ManagerService.TimeEntries with @(
       Value                : reviewerName,
       Label                : '{i18n>ReviewedBy}',
       ![@HTML5.CssDefaults]: {width: '12rem'}
+    },
+    {
+      Value                : isOvertime,
+      Label                : '{i18n>Overtime}',
+      ![@HTML5.CssDefaults]: {width: '6rem'}
+    },
+    {
+      Value                : overtimeHours,
+      Label                : '{i18n>OvertimeHours}',
+      ![@HTML5.CssDefaults]: {width: '6rem'}
     },
     // Inline actions for quick row-level approval/rejection
     {
@@ -518,6 +529,18 @@ annotate ManagerService.TimeEntries with @(
     {
       Value: cost,
       Label: '{i18n>Cost}'
+    },
+    {
+      Value: isOvertime,
+      Label: '{i18n>Overtime}'
+    },
+    {
+      Value: overtimeHours,
+      Label: '{i18n>OvertimeHours}'
+    },
+    {
+      Value: overtimeJustification,
+      Label: '{i18n>OvertimeJustification}'
     }
   ]},
 
@@ -526,6 +549,18 @@ annotate ManagerService.TimeEntries with @(
       Value      : status,
       Label      : '{i18n>Status}',
       Criticality: statusCriticality
+    },
+    {
+      Value: isOvertime,
+      Label: '{i18n>Overtime}'
+    },
+    {
+      Value: overtimeHours,
+      Label: '{i18n>OvertimeHours}'
+    },
+    {
+      Value: overtimeJustification,
+      Label: '{i18n>OvertimeJustification}'
     },
     {
       Value: rejectionNote,
@@ -628,8 +663,11 @@ annotate ManagerService.TimeEntries with {
   categoryName      @title: '{i18n>Category}';
   cost              @title: '{i18n>Cost}';
   rateSnapshot      @title: '{i18n>Rate}';
-  rejectionNote     @title: '{i18n>RejectionNote}'  @UI.MultiLineText;
-  reviewedAt        @title: '{i18n>ReviewedAt}';
+  rejectionNote         @title: '{i18n>RejectionNote}'  @UI.MultiLineText;
+  reviewedAt            @title: '{i18n>ReviewedAt}';
+  isOvertime            @title: '{i18n>Overtime}';
+  overtimeHours         @title: '{i18n>OvertimeHours}';
+  overtimeJustification @title: '{i18n>OvertimeJustification}' @UI.MultiLineText;
   reviewerName      @title: '{i18n>ReviewedBy}';
 };
 

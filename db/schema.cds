@@ -156,6 +156,11 @@ entity TimeEntries : cuid, managed {
 
   month         : Integer;
   year          : Integer;
+
+  // Overtime tracking
+  isOvertime           : Boolean default false;
+  overtimeHours        : Decimal(4, 2);
+  overtimeJustification: String(500);
 }
 
 type BillingPeriodStatus : String(1) enum {
@@ -217,6 +222,8 @@ entity Notifications : cuid, managed {
   sentAt    : Timestamp;
   status    : String(1) default 'P'; // P=Pending, S=Sent, F=Failed
   isRead    : Boolean default false;
+  channel   : String(20) default 'Email'; // Email | WorkZone
+  externalNotificationId : String(100);
 }
 
 entity EmailOutbox : cuid, managed {
@@ -233,6 +240,7 @@ entity EmailOutbox : cuid, managed {
   payload       : LargeString; // JSON context for finalization
   recipient_ID  : UUID;
   client_ID     : UUID;
+  channel       : String(20) default 'Email'; // Email | WorkZone
 }
 
 entity JobLocks : cuid {

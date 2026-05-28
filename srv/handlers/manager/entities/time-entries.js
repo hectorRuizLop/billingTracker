@@ -60,6 +60,10 @@ async function afterRead(results, _req) {
 
   for (const entry of entries) {
     entry.statusCriticality = STATUS_CRITICALITY[entry.status] ?? 0;
+    // Highlight overtime entries in red so managers notice them
+    if (entry.isOvertime && entry.status === 'S') {
+      entry.statusCriticality = 1; // Negative/red
+    }
     if (entry.reviewedBy && reviewerMap[entry.reviewedBy]) {
       entry.reviewerName = reviewerMap[entry.reviewedBy];
     } else if (entry.reviewedBy) {

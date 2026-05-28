@@ -115,6 +115,7 @@ async function validateDailyLimit(
   date,
   hoursToAdd,
   currentEntryId = null,
+  reqData = null,
 ) {
   if (!employeeId || !date || hoursToAdd === undefined || hoursToAdd === null)
     return null;
@@ -135,9 +136,20 @@ async function validateDailyLimit(
 
   const result = await query;
   const currentTotal = result?.total || 0;
+  const newTotal = Number(currentTotal) + Number(hoursToAdd);
 
-  if (Number(currentTotal) + Number(hoursToAdd) > 8) {
-    return "Cannot log more than 8 hours on the same day";
+  if (newTotal > 8) {
+    const overtimeHours = newTotal - 8;
+    if (reqData) {
+      reqData.isOvertime = true;
+      reqData.overtimeHours = overtimeHours;
+    }
+    if (!reqData?.overtimeJustification) {
+      return "Overtime hours require a justification. Please provide a reason for logging more than 8 hours.";
+    }
+  } else if (reqData) {
+    reqData.isOvertime = false;
+    reqData.overtimeHours = 0;
   }
 
   return null;
@@ -177,7 +189,7 @@ async function validateCreate(req) {
   if (monthLockError) return req.error(400, monthLockError);
 
   if (date && employee_ID && hours !== undefined) {
-    const dailyLimitError = await validateDailyLimit(employee_ID, date, hours);
+    const dailyLimitError = await validateDailyLimit(employee_ID, date, hours, null, req.data);
     if (dailyLimitError) return req.error(400, dailyLimitError);
   }
 
@@ -241,6 +253,7 @@ async function validateUpdate(req, entityName) {
     newDate,
     newHours,
     id,
+    req.data,
   );
   if (dailyLimitError) return req.error(400, dailyLimitError);
 
