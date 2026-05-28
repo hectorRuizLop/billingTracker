@@ -58,6 +58,8 @@ describe("EmployeeService", () => {
   });
 
   test("Employee can create a time entry", async () => {
+    await clearEmployeeMonthEntries(MGR1_ID);
+
     const { data, status } = await POST(
       `${BASE}/MyTimeEntries`,
       {
@@ -344,6 +346,8 @@ describe("TimeEntry Validations", () => {
   });
 
   test("Allows creating a new draft in the same month to correct a rejected entry", async () => {
+    await clearEmployeeMonthEntries(MGR2.username);
+
     const rejectionSourceDate = "2026-04-14";
     const correctionDate = "2026-04-15";
 
@@ -382,5 +386,194 @@ describe("TimeEntry Validations", () => {
 
     expect(status).toBe(201);
     expect(correction.status).toBe("D");
+  });
+});
+
+describe("Overtime Logic", () => {
+  const BASE = "/api/employee";
+
+  test("Rejects entry exceeding 8h without justification", async () => {
+    await clearEmployeeMonthEntries(MGR1_ID);
+
+    // First entry: 5h
+    await POST(
+      `${BASE}/MyTimeEntries`,
+      {
+        date: VALID_WORKDAY,
+        hours: 5,
+        description: "Morning",
+        employee_ID: MGR1_ID,
+        project_ID: PROJECT_CP,
+      },
+      { auth: MGR1 },
+    );
+
+    // Second entry: 4h → total 9h, no justification
+    const { status, data } = await POST(
+      `${BASE}/MyTimeEntries`,
+      {
+        date: VALID_WORKDAY,
+        hours: 4,
+        description: "Afternoon",
+        employee_ID: MGR1_ID,
+        project_ID: PROJECT_CP,
+      },
+      { auth: MGR1, validateStatus: () => true },
+    );
+
+    expect(status).toBe(400);
+    expect(data.error.message).toMatch(/justification/i);
+  });
+
+  test("Allows entry exceeding 8h with justification and sets overtime fields", async () => {
+    await clearEmployeeMonthEntries(MGR1_ID);
+
+    await POST(
+      `${BASE}/MyTimeEntries`,
+      {
+        date: VALID_WORKDAY,
+        hours: 6,
+        description: "Morning",
+        employee_ID: MGR1_ID,
+        project_ID: PROJECT_CP,
+      },
+      { auth: MGR1 },
+    );
+
+    const { status, data } = await POST(
+      `${BASE}/MyTimeEntries`,
+      {
+        date: VALID_WORKDAY,
+        hours: 4,
+        description: "Afternoon",
+        employee_ID: MGR1_ID,
+        project_ID: PROJECT_CP,
+        overtimeJustification: "Critical release deadline",
+      },
+      { auth: MGR1, validateStatus: () => true },
+    );
+
+    expect(status).toBe(201);
+    expect(data.isOvertime).toBe(true);
+    expect(parseFloat(data.overtimeHours)).toBe(2);
+  });
+});
+
+describe("Calendar", () => {
+  const BASE = "/api/employee";
+
+  test("getCalendarDays returns days with hour aggregates", async () => {
+    await clearEmployeeMonthEntries(EMP1_ID, 2026, 4);
+
+    await POST(
+      `${BASE}/MyTimeEntries`,
+      {
+        date: "2026-04-14",
+        hours: 3,
+        description: "Calendar test",
+        employee_ID: EMP1_ID,
+        project_ID: PROJECT_CP,
+      },
+      { auth: EMP1 },
+    );
+
+    const { status, data } = await GET(
+      `${BASE}/getCalendarDays(year=2026,month=4)`,
+      { auth: EMP1 },
+    );
+
+    expect(status).toBe(200);
+    expect(data.value).toBeInstanceOf(Array);
+    expect(data.value.length).toBe(30);
+
+    const day14 = data.value.find((d) => d.date === "2026-04-14");
+    expect(day14).toBeTruthy();
+    expect(day14.totalHours).toBe(3);
+    expect(day14.hasEntries).toBe(true);
+    expect(day14.dayType).toBe("weekday");
+
+    const day12 = data.value.find((d) => d.date === "2026-04-12");
+    expect(day12.dayType).toBe("weekend");
+  });
+});
+
+describe("Work Zone Notifications", () => {
+  const BASE = "/api/employee";
+
+  test("submitMonth creates WorkZone notification for project manager", async () => {
+    await clearEmployeeMonthEntries(EMP1_ID, 2026, 4);
+    await cds.run(
+      DELETE.from("my.billing.Notifications").where({ channel: "WorkZone" }),
+    );
+    await cds.run(
+      DELETE.from("my.billing.EmailOutbox").where({ channel: "WorkZone" }),
+    );
+
+    await POST(
+      `${BASE}/MyTimeEntries`,
+      {
+        date: "2026-04-17",
+        hours: 2,
+        description: "Notification test",
+        employee_ID: EMP1_ID,
+        project_ID: PROJECT_CP,
+      },
+      { auth: EMP1 },
+    );
+
+    const { status, data } = await POST(
+      `${BASE}/submitMonth`,
+      { year: 2026, month: 4 },
+      { auth: EMP1 },
+    );
+    expect(status).toBe(200);
+
+    // Manager should see the notification
+    const { data: notifs } = await GET(`${BASE}/MyNotifications`, {
+      auth: MGR1,
+    });
+    const notif = notifs.value.find((n) => n.subject.includes("Customer Portal"));
+    expect(notif).toBeTruthy();
+    expect(notif.channel).toBe("WorkZone");
+    expect(notif.isRead).toBe(false);
+
+    // Outbox entry should exist with reference to notification
+    const outbox = await cds.run(
+      SELECT.from("my.billing.EmailOutbox").where({ channel: "WorkZone" }),
+    );
+    expect(outbox.length).toBeGreaterThan(0);
+    expect(outbox[0].referenceType).toBe("WorkZoneNotification");
+    expect(outbox[0].referenceId).toBe(notif.ID);
+  });
+
+  test("markNotificationRead sets isRead to true", async () => {
+    // Create a notification directly for MGR1
+    const notifId = cds.utils.uuid();
+    await cds.run(
+      INSERT.into("my.billing.Notifications").entries({
+        ID: notifId,
+        recipient_ID: MGR1_ID,
+        type: "Test",
+        subject: "Test notification",
+        message: "Please mark me as read",
+        status: "P",
+        channel: "WorkZone",
+        isRead: false,
+      }),
+    );
+
+    const { status, data } = await POST(
+      `${BASE}/markNotificationRead`,
+      { notificationId: notifId },
+      { auth: MGR1 },
+    );
+    expect(status).toBe(200);
+    expect(data.value).toMatch(/marked as read/i);
+
+    const { data: notifs } = await GET(`${BASE}/MyNotifications`, {
+      auth: MGR1,
+    });
+    const notif = notifs.value.find((n) => n.ID === notifId);
+    expect(notif.isRead).toBe(true);
   });
 });
