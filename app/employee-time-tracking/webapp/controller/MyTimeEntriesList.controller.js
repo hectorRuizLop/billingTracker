@@ -33,6 +33,11 @@ sap.ui.define([
 
       this.getOwnerComponent().getRouter().getRoute("MyTimeEntriesList").attachPatternMatched(this._onRouteMatched, this);
 
+      this._oNotificationModel = new JSONModel({count: 0});
+      this.getView().setModel(this._oNotificationModel, "notifications");
+
+      this._startNotificationPolling();
+
       // Attach to table data loaded to update week chart
       var oTable = this.getView().byId("timeEntriesTable");
       if (oTable) {
@@ -49,6 +54,39 @@ sap.ui.define([
         oFCL.setLayout("OneColumn");
       }
       this._refreshTimeEntries();
+      this._fetchNotificationCount();
+    },
+
+    _startNotificationPolling: function () {
+      this._notificationInterval = setInterval(function () {
+        this._fetchNotificationCount();
+      }.bind(this), 30000);
+    },
+
+    _fetchNotificationCount: function () {
+      var oModel = this.getView().getModel();
+      var oListBinding = oModel.bindList("/MyNotifications", null, null, [new Filter("isRead", FilterOperator.EQ, false)]);
+      oListBinding.requestContexts(0, 1).then(function (aContexts) {
+        var iCount = oListBinding.getLength ? oListBinding.getLength() : aContexts.length;
+        this._oNotificationModel.setProperty("/count", iCount);
+        var oBell = this.getView().byId("notificationBell");
+        if (oBell) {
+          oBell.getCustomData()[0].setValue(String(iCount));
+          oBell.setType(iCount > 0 ? "Emphasized" : "Transparent");
+        }
+      }.bind(this)).catch(function () {
+        // silently ignore
+      });
+    },
+
+    onOpenNotifications: function () {
+      this.getOwnerComponent().getRouter().navTo("MyNotifications");
+    },
+
+    onExit: function () {
+      if (this._notificationInterval) {
+        clearInterval(this._notificationInterval);
+      }
     },
 
     _onTableUpdateFinished: function () {

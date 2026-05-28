@@ -2,6 +2,7 @@
 
 const cds = require("@sap/cds");
 const { EmailSender } = require("./email-sender");
+const { sendNotification: sendWorkZoneNotification } = require("./workzone-notifier");
 
 /**
  * Transactional Outbox Processor.
@@ -22,6 +23,26 @@ class OutboxProcessor {
     this._pollIntervalMs = options.pollIntervalMs || 60_000;
     this._batchSize = options.batchSize || 10;
     this._running = false;
+  }
+
+  async _dispatch(entry) {
+    const channel = entry.channel || "Email";
+    if (channel === "WorkZone") {
+      return sendWorkZoneNotification({
+        to: entry.to,
+        subject: entry.subject,
+        text: entry.text,
+        referenceType: entry.referenceType,
+        referenceId: entry.referenceId,
+      });
+    }
+    // Default: Email
+    return this._emailSender.send({
+      to: entry.to,
+      from: entry.from,
+      subject: entry.subject,
+      text: entry.text,
+    });
   }
 
   async _finalizeInvoice(referenceId, payload) {
@@ -83,37 +104,44 @@ class OutboxProcessor {
     const { Notifications, EmailOutbox } = cds.entities("my.billing");
 
     try {
-      await this._emailSender.send({
-        to: entry.to,
-        from: entry.from,
-        subject: entry.subject,
-        text: entry.text,
-      });
+      await this._dispatch(entry);
 
       // Finalize referenced business state if applicable
       if (entry.referenceId && entry.referenceType?.startsWith("Invoice")) {
         await this._finalizeInvoice(entry.referenceId, entry.payload);
       }
 
-      // Map technical reference types to human-readable notification types
-      const notificationType =
-        entry.referenceType === "InvoiceNew" ||
-        entry.referenceType === "InvoiceRetry"
-          ? "InvoiceSent"
-          : entry.referenceType || "Email";
+      if (entry.referenceType === "WorkZoneNotification" && entry.referenceId) {
+        // Update existing notification record to Sent
+        await cds.run(
+          UPDATE(Notifications)
+            .set({
+              status: "S",
+              sentAt: new Date().toISOString(),
+            })
+            .where({ ID: entry.referenceId }),
+        );
+      } else {
+        // Map technical reference types to human-readable notification types
+        const notificationType =
+          entry.referenceType === "InvoiceNew" ||
+          entry.referenceType === "InvoiceRetry"
+            ? "InvoiceSent"
+            : entry.referenceType || "Email";
 
-      // Write history record
-      await cds.run(
-        INSERT.into(Notifications).entries({
-          recipient_ID: entry.recipient_ID || undefined,
-          client_ID: entry.client_ID || undefined,
-          type: notificationType,
-          subject: entry.subject,
-          message: entry.text,
-          sentAt: new Date().toISOString(),
-          status: "S",
-        }),
-      );
+        // Write history record
+        await cds.run(
+          INSERT.into(Notifications).entries({
+            recipient_ID: entry.recipient_ID || undefined,
+            client_ID: entry.client_ID || undefined,
+            type: notificationType,
+            subject: entry.subject,
+            message: entry.text,
+            sentAt: new Date().toISOString(),
+            status: "S",
+          }),
+        );
+      }
 
       // Remove successfully processed entry
       await cds.run(DELETE.from(EmailOutbox).where({ ID: entry.ID }));

@@ -1,0 +1,31 @@
+<mvc:View
+  controllerName="nubexx.billing.employee.controller.MyNotifications"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m">
+  <Page title="{i18n>Notifications}" showNavButton="true" navButtonPress=".onNavBack">
+    <content>
+      <List
+        id="notificationList"
+        items="{path:'/MyNotifications', sorter:{path:'sentAt', descending:true}}"
+        noDataText="{i18n>NoNotifications}">
+        <items>
+          <CustomListItem>
+            <HBox class="sapUiSmallMargin" alignItems="Center" justifyContent="SpaceBetween">
+              <VBox>
+                <Title text="{subject}" level="H5"/>
+                <Text text="{message}"/>
+                <Text text="{path:'sentAt', type:'sap.ui.model.type.Date', formatOptions:{style:'short'}}" class="sapUiTinyMarginTop"/>
+              </VBox>
+              <Button
+                icon="sap-icon://accept"
+                text="{i18n>MarkAsRead}"
+                press=".onMarkRead"
+                visible="{= !${isRead}}"
+                type="Transparent"/>
+            </HBox>
+          </CustomListItem>
+        </items>
+      </List>
+    </content>
+  </Page>
+</mvc:View>

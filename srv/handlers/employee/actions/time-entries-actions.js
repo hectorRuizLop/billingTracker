@@ -44,6 +44,44 @@ async function submitMonth(req) {
     status: "D",
   });
 
+  // Notify project managers via Work Zone
+  const { Projects, EmailOutbox, Notifications } = cds.entities("my.billing");
+  const projectIds = [...new Set(drafts.map((d) => d.project_ID))];
+  for (const pid of projectIds) {
+    const project = await SELECT.one.from(Projects).where({ ID: pid }).columns(["name", "manager_ID"]);
+    if (!project?.manager_ID) continue;
+
+    const manager = await SELECT.one.from("my.billing.Employees").where({ ID: project.manager_ID }).columns(["email"]);
+    if (!manager?.email) continue;
+
+    const subject = `Time entries submitted for ${project.name}`;
+    const text = `${employee.firstName} ${employee.lastName} has submitted ${drafts.filter((d) => d.project_ID === pid).length} time entr${drafts.filter((d) => d.project_ID === pid).length === 1 ? "y" : "ies"} for ${year}-${String(month).padStart(2, "0")}.`;
+
+    const notificationId = cds.utils.uuid();
+    await INSERT.into(Notifications).entries({
+      ID: notificationId,
+      recipient_ID: project.manager_ID,
+      type: "TimeEntrySubmitted",
+      subject,
+      message: text,
+      status: "P",
+      channel: "WorkZone",
+    });
+
+    await INSERT.into(EmailOutbox).entries({
+      ID: cds.utils.uuid(),
+      to: manager.email,
+      from: "billing-tracker@nubexx.com",
+      subject,
+      text,
+      status: "P",
+      channel: "WorkZone",
+      referenceType: "WorkZoneNotification",
+      referenceId: notificationId,
+      recipient_ID: project.manager_ID,
+    });
+  }
+
   return `Submitted ${drafts.length} time entr${drafts.length === 1 ? "y" : "ies"} for ${year}-${String(month).padStart(2, "0")}.`;
 }
 

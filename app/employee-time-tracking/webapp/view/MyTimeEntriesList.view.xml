@@ -5,6 +5,13 @@
   xmlns:core="sap.ui.core"
   xmlns:microchart="sap.suite.ui.microchart">
   <Page id="timeEntriesListPage" title="{i18n>MyTimeEntries}" showNavButton="false">
+    <headerContent>
+      <Button id="notificationBell" icon="sap-icon://bell" press=".onOpenNotifications" type="Transparent">
+        <customData>
+          <core:CustomData key="badge" value="0" writeToDom="true"/>
+        </customData>
+      </Button>
+    </headerContent>
     <content>
       <IconTabBar id="iconTabBar" select=".onTabSelect" selectedKey="timeEntries">
         <items>
