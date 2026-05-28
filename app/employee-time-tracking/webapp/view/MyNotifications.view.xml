@@ -1,31 +1,61 @@
 <mvc:View
   controllerName="nubexx.billing.employee.controller.MyNotifications"
   xmlns:mvc="sap.ui.core.mvc"
-  xmlns="sap.m">
-  <Page title="{i18n>Notifications}" showNavButton="true" navButtonPress=".onNavBack">
-    <content>
-      <List
-        id="notificationList"
-        items="{path:'/MyNotifications', sorter:{path:'sentAt', descending:true}}"
-        noDataText="{i18n>NoNotifications}">
-        <items>
-          <CustomListItem>
-            <HBox class="sapUiSmallMargin" alignItems="Center" justifyContent="SpaceBetween">
-              <VBox>
-                <Title text="{subject}" level="H5"/>
-                <Text text="{message}"/>
-                <Text text="{path:'sentAt', type:'sap.ui.model.type.Date', formatOptions:{style:'short'}}" class="sapUiTinyMarginTop"/>
-              </VBox>
-              <Button
-                icon="sap-icon://accept"
-                text="{i18n>MarkAsRead}"
-                press=".onMarkRead"
-                visible="{= !${isRead}}"
-                type="Transparent"/>
-            </HBox>
-          </CustomListItem>
-        </items>
-      </List>
-    </content>
-  </Page>
+  xmlns="sap.m"
+  xmlns:f="sap.f"
+  xmlns:card="sap.f.cards">
+
+  <f:DynamicPage id="notificationsDynamicPage" headerExpanded="false">
+    <f:title>
+      <f:DynamicPageTitle>
+        <f:heading>
+          <Title text="{i18n>Notifications}" />
+        </f:heading>
+      </f:DynamicPageTitle>
+    </f:title>
+
+    <f:content>
+      <f:Card class="sapUiMediumMargin">
+        <f:header>
+          <card:Header title="{i18n>Notifications}" iconSrc="sap-icon://bell" />
+        </f:header>
+        <f:content>
+          <List
+            id="notificationList"
+            items="{path:'/MyNotifications', sorter:{path:'sentAt', descending:true}}"
+            noDataText="{i18n>NoNotifications}">
+            <items>
+              <CustomListItem>
+                <HBox class="sapUiSmallMargin" alignItems="Center" justifyContent="SpaceBetween">
+                  <VBox>
+                    <HBox alignItems="Center">
+                      <Avatar
+                        initials="{parts:[{path:'type'}], formatter:'.formatTypeInitials'}"
+                        displaySize="S"
+                        class="sapUiSmallMarginEnd" />
+                      <ObjectIdentifier title="{subject}" text="{message}" />
+                    </HBox>
+                    <Text text="{path:'sentAt', type:'sap.ui.model.type.Date', formatOptions:{style:'short'}}" class="sapUiTinyMarginTop"/>
+                  </VBox>
+                  <HBox alignItems="Center">
+                    <ObjectStatus
+                      text="{= ${isRead} ? 'Read' : 'Unread'}"
+                      state="{= ${isRead} ? 'Success' : 'Warning'}"
+                      inverted="true"
+                      class="sapUiSmallMarginEnd" />
+                    <Button
+                      icon="sap-icon://accept"
+                      text="{i18n>MarkAsRead}"
+                      press=".onMarkRead"
+                      visible="{= !${isRead}}"
+                      type="Transparent"/>
+                  </HBox>
+                </HBox>
+              </CustomListItem>
+            </items>
+          </List>
+        </f:content>
+      </f:Card>
+    </f:content>
+  </f:DynamicPage>
 </mvc:View>

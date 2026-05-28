@@ -2,9 +2,62 @@
   controllerName="nubexx.billing.manager.controller.ProjectsList"
   xmlns:mvc="sap.ui.core.mvc"
   xmlns="sap.m"
-  xmlns:core="sap.ui.core">
-  <Page id="projectsListPage" title="{i18n>Projects}" showNavButton="false">
-    <content>
+  xmlns:core="sap.ui.core"
+  xmlns:f="sap.f">
+
+  <f:DynamicPage id="projectsDynamicPage" headerExpanded="true">
+    <f:title>
+      <f:DynamicPageTitle>
+        <f:heading>
+          <Title text="{i18n>Projects}" />
+        </f:heading>
+      </f:DynamicPageTitle>
+    </f:title>
+
+    <f:header>
+      <f:DynamicPageHeader pinnable="true">
+        <f:content>
+          <HBox justifyContent="SpaceBetween" alignItems="Center">
+            <HBox>
+              <VBox class="sapUiMediumMarginEnd" alignItems="Center">
+                <NumericContent
+                  icon="sap-icon://project-definition-triangle"
+                  value="{kpiModel>/totalProjects}"
+                  valueColor="Good"
+                  withMargin="false" />
+                <Text text="Projects" class="sapUiTinyMarginTop" />
+              </VBox>
+              <VBox class="sapUiMediumMarginEnd" alignItems="Center">
+                <NumericContent
+                  icon="sap-icon://status-open"
+                  value="{kpiModel>/openProjects}"
+                  valueColor="Information"
+                  withMargin="false" />
+                <Text text="Open" class="sapUiTinyMarginTop" />
+              </VBox>
+              <VBox class="sapUiMediumMarginEnd" alignItems="Center">
+                <NumericContent
+                  icon="sap-icon://money-bills"
+                  value="{kpiModel>/totalBudget}"
+                  valueColor="Success"
+                  withMargin="false" />
+                <Text text="Budget (k€)" class="sapUiTinyMarginTop" />
+              </VBox>
+              <VBox alignItems="Center">
+                <NumericContent
+                  icon="sap-icon://measure"
+                  value="{kpiModel>/totalHours}"
+                  valueColor="Critical"
+                  withMargin="false" />
+                <Text text="Hours" class="sapUiTinyMarginTop" />
+              </VBox>
+            </HBox>
+          </HBox>
+        </f:content>
+      </f:DynamicPageHeader>
+    </f:header>
+
+    <f:content>
       <Table
         id="projectsTable"
         items="{path:'/Projects', parameters:{$count:true}}"
@@ -16,7 +69,7 @@
           <Toolbar>
             <Title text="{i18n>Projects}"/>
             <ToolbarSpacer/>
-            <SearchField id="searchField" search=".onSearch" width="25%"/>
+            <SearchField id="searchField" search=".onSearch" liveChange=".onSearch" width="25%" placeholder="Search projects..."/>
             <Select id="statusFilter" change=".onFilterChange" autoAdjustWidth="true">
               <core:Item key="" text="{i18n>AllStatus}"/>
               <core:Item key="O" text="{i18n>Open}"/>
@@ -26,19 +79,26 @@
           </Toolbar>
         </headerToolbar>
         <columns>
-          <Column><Text text="{i18n>Project}"/></Column>
-          <Column width="6rem"><Text text="{i18n>Status}"/></Column>
-          <Column width="8rem"><Text text="{i18n>Budget}"/></Column>
-          <Column width="8rem"><Text text="{i18n>ApprovedHours}"/></Column>
-          <Column width="8rem"><Text text="{i18n>ApprovedCost}"/></Column>
+          <Column width="30%"><Text text="{i18n>Project}"/></Column>
+          <Column width="8rem" hAlign="Center"><Text text="{i18n>Status}"/></Column>
+          <Column width="10rem" hAlign="End"><Text text="{i18n>Budget}"/></Column>
+          <Column width="10rem" hAlign="End"><Text text="{i18n>ApprovedHours}"/></Column>
+          <Column width="10rem" hAlign="End"><Text text="{i18n>ApprovedCost}"/></Column>
           <Column width="12rem"><Text text="{i18n>BudgetRemaining}"/></Column>
         </columns>
         <items>
           <ColumnListItem type="Navigation" press=".onPress">
             <cells>
-              <ObjectIdentifier title="{name}" text="{clientName}" wrapping="false" class="managerProjectIdentifier"/>
+              <HBox alignItems="Center">
+                <Avatar
+                  initials="{parts:[{path:'name'}], formatter:'.formatProjectInitials'}"
+                  displaySize="S"
+                  class="sapUiSmallMarginEnd" />
+                <ObjectIdentifier title="{name}" text="{clientName}" />
+              </HBox>
               <ObjectStatus text="{= ${status} === 'O' ? ${i18n>Open} : ${i18n>Closed}}" 
-                           state="{= ${status} === 'O' ? 'Information' : 'Success'}"/>
+                           state="{= ${status} === 'O' ? 'Information' : 'Success'}"
+                           inverted="true" />
               <ObjectNumber number="{budget}"
                            unit="EUR"
                            state="{= ${budgetCriticality} === 1 ? 'Error' : (${budgetCriticality} === 2 ? 'Warning' : 'Success')}"/>
@@ -55,6 +115,6 @@
           </ColumnListItem>
         </items>
       </Table>
-    </content>
-  </Page>
+    </f:content>
+  </f:DynamicPage>
 </mvc:View>

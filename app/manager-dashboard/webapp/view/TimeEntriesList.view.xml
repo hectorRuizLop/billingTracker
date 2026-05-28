@@ -2,9 +2,62 @@
   controllerName="nubexx.billing.manager.controller.TimeEntriesList"
   xmlns:mvc="sap.ui.core.mvc"
   xmlns="sap.m"
-  xmlns:core="sap.ui.core">
-  <Page id="timeEntriesListPage" title="{i18n>TimeEntries}" showNavButton="false">
-    <content>
+  xmlns:core="sap.ui.core"
+  xmlns:f="sap.f">
+
+  <f:DynamicPage id="timeEntriesDynamicPage" headerExpanded="true">
+    <f:title>
+      <f:DynamicPageTitle>
+        <f:heading>
+          <Title text="{i18n>TimeEntries}" />
+        </f:heading>
+      </f:DynamicPageTitle>
+    </f:title>
+
+    <f:header>
+      <f:DynamicPageHeader pinnable="true">
+        <f:content>
+          <HBox justifyContent="SpaceBetween" alignItems="Center">
+            <HBox>
+              <VBox class="sapUiMediumMarginEnd" alignItems="Center">
+                <NumericContent
+                  icon="sap-icon://time-entry-request"
+                  value="{kpiModel>/totalEntries}"
+                  valueColor="Good"
+                  withMargin="false" />
+                <Text text="Entries" class="sapUiTinyMarginTop" />
+              </VBox>
+              <VBox class="sapUiMediumMarginEnd" alignItems="Center">
+                <NumericContent
+                  icon="sap-icon://pending"
+                  value="{kpiModel>/pendingEntries}"
+                  valueColor="Critical"
+                  withMargin="false" />
+                <Text text="Pending" class="sapUiTinyMarginTop" />
+              </VBox>
+              <VBox class="sapUiMediumMarginEnd" alignItems="Center">
+                <NumericContent
+                  icon="sap-icon://accept"
+                  value="{kpiModel>/approvedEntries}"
+                  valueColor="Success"
+                  withMargin="false" />
+                <Text text="Approved" class="sapUiTinyMarginTop" />
+              </VBox>
+              <VBox alignItems="Center">
+                <NumericContent
+                  icon="sap-icon://decline"
+                  value="{kpiModel>/rejectedEntries}"
+                  valueColor="Error"
+                  withMargin="false" />
+                <Text text="Rejected" class="sapUiTinyMarginTop" />
+              </VBox>
+            </HBox>
+          </HBox>
+        </f:content>
+      </f:DynamicPageHeader>
+    </f:header>
+
+    <f:content>
       <Table
         id="timeEntriesTable"
         items="{path:'/TimeEntries', parameters:{$count:true}}"
@@ -15,7 +68,7 @@
           <Toolbar>
             <Title text="{i18n>TimeEntries}"/>
             <ToolbarSpacer/>
-            <SearchField search=".onSearch" width="25%"/>
+            <SearchField search=".onSearch" liveChange=".onSearch" width="25%" placeholder="Search employees or projects..."/>
             <Select id="statusFilter" change=".onFilterChange" autoAdjustWidth="true">
               <core:Item key="" text="{i18n>All}"/>
               <core:Item key="D" text="{i18n>Draft}"/>
@@ -29,12 +82,12 @@
         </headerToolbar>
         <columns>
           <Column width="8rem"><Text text="{i18n>Date}"/></Column>
-          <Column width="10rem"><Text text="{i18n>Status}"/></Column>
+          <Column width="10rem" hAlign="Center"><Text text="{i18n>Status}"/></Column>
           <Column width="12rem"><Text text="{i18n>Employee}"/></Column>
           <Column width="12rem"><Text text="{i18n>Project}"/></Column>
-          <Column width="8rem"><Text text="{i18n>Category}"/></Column>
-          <Column width="5rem"><Text text="{i18n>Hours}"/></Column>
-          <Column width="7rem"><Text text="{i18n>Cost}"/></Column>
+          <Column width="8rem" hAlign="Center"><Text text="{i18n>Category}"/></Column>
+          <Column width="6rem" hAlign="Center"><Text text="{i18n>Hours}"/></Column>
+          <Column width="8rem" hAlign="End"><Text text="{i18n>Cost}"/></Column>
           <Column width="12rem"><Text text="{i18n>ReviewedBy}"/></Column>
         </columns>
         <items>
@@ -42,17 +95,24 @@
             <cells>
               <Text text="{date}"/>
               <ObjectStatus text="{= ${status} === 'D' ? ${i18n>Draft} : (${status} === 'S' ? ${i18n>Submitted} : (${status} === 'A' ? ${i18n>Approved} : ${i18n>Rejected}))}" 
-                           state="{= ${status} === 'D' ? 'None' : (${status} === 'S' ? 'Information' : (${status} === 'A' ? 'Success' : 'Error')))}"/>
-              <Text text="{employeeName}"/>
+                           state="{= ${status} === 'D' ? 'None' : (${status} === 'S' ? 'Information' : (${status} === 'A' ? 'Success' : 'Error')))}"
+                           inverted="true" />
+              <HBox alignItems="Center">
+                <Avatar
+                  initials="{parts:[{path:'employeeName'}], formatter:'.formatInitials'}"
+                  displaySize="XS"
+                  class="sapUiSmallMarginEnd" />
+                <Text text="{employeeName}"/>
+              </HBox>
               <Text text="{projectName}"/>
-              <Text text="{categoryName}"/>
-              <Text text="{hours}"/>
-              <Text text="{cost}"/>
+              <ObjectStatus text="{categoryName}" inverted="true" state="Information" />
+              <ObjectNumber number="{hours}" unit="h" />
+              <ObjectNumber number="{cost}" unit="EUR" />
               <Text text="{reviewerName}"/>
             </cells>
           </ColumnListItem>
         </items>
       </Table>
-    </content>
-  </Page>
+    </f:content>
+  </f:DynamicPage>
 </mvc:View>

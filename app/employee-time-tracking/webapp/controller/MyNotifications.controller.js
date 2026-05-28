@@ -46,6 +46,11 @@ sap.ui.define([
 
     onNavBack: function () {
       this.getOwnerComponent().getRouter().navTo("MyTimeEntriesList", {}, true);
+    },
+
+    formatTypeInitials: function (sType) {
+      if (!sType) return "?";
+      return sType.substring(0, 2).toUpperCase();
     }
   });
 });

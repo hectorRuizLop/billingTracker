@@ -3,16 +3,69 @@
   xmlns:mvc="sap.ui.core.mvc"
   xmlns="sap.m"
   xmlns:core="sap.ui.core"
+  xmlns:f="sap.f"
   xmlns:microchart="sap.suite.ui.microchart">
-  <Page id="timeEntriesListPage" title="{i18n>MyTimeEntries}" showNavButton="false">
-    <headerContent>
-      <Button id="notificationBell" icon="sap-icon://bell" press=".onOpenNotifications" type="Transparent">
-        <customData>
-          <core:CustomData key="badge" value="0" writeToDom="true"/>
-        </customData>
-      </Button>
-    </headerContent>
-    <content>
+
+  <f:DynamicPage id="timeEntriesDynamicPage" headerExpanded="true">
+    <f:title>
+      <f:DynamicPageTitle>
+        <f:heading>
+          <Title text="{i18n>MyTimeEntries}" />
+        </f:heading>
+        <f:actions>
+          <Button id="notificationBell" icon="sap-icon://bell" press=".onOpenNotifications" type="Transparent">
+            <customData>
+              <core:CustomData key="badge" value="0" writeToDom="true"/>
+            </customData>
+          </Button>
+        </f:actions>
+      </f:DynamicPageTitle>
+    </f:title>
+
+    <f:header>
+      <f:DynamicPageHeader pinnable="true">
+        <f:content>
+          <HBox justifyContent="SpaceBetween" alignItems="Center">
+            <HBox>
+              <VBox class="sapUiMediumMarginEnd" alignItems="Center">
+                <NumericContent
+                  icon="sap-icon://time-entry-request"
+                  value="{kpiModel>/totalEntries}"
+                  valueColor="Good"
+                  withMargin="false" />
+                <Text text="Entries" class="sapUiTinyMarginTop" />
+              </VBox>
+              <VBox class="sapUiMediumMarginEnd" alignItems="Center">
+                <NumericContent
+                  icon="sap-icon://measure"
+                  value="{kpiModel>/totalHours}"
+                  valueColor="Information"
+                  withMargin="false" />
+                <Text text="Hours" class="sapUiTinyMarginTop" />
+              </VBox>
+              <VBox class="sapUiMediumMarginEnd" alignItems="Center">
+                <NumericContent
+                  icon="sap-icon://accept"
+                  value="{kpiModel>/approvedHours}"
+                  valueColor="Success"
+                  withMargin="false" />
+                <Text text="Approved" class="sapUiTinyMarginTop" />
+              </VBox>
+              <VBox alignItems="Center">
+                <NumericContent
+                  icon="sap-icon://pending"
+                  value="{kpiModel>/draftCount}"
+                  valueColor="Critical"
+                  withMargin="false" />
+                <Text text="Drafts" class="sapUiTinyMarginTop" />
+              </VBox>
+            </HBox>
+          </HBox>
+        </f:content>
+      </f:DynamicPageHeader>
+    </f:header>
+
+    <f:content>
       <IconTabBar id="iconTabBar" select=".onTabSelect" selectedKey="timeEntries">
         <items>
           <IconTabFilter key="timeEntries" text="{i18n>MyTimeEntries}">
@@ -68,27 +121,36 @@
                   <Toolbar>
                     <Title text="{i18n>MyTimeEntries}"/>
                     <ToolbarSpacer/>
-                    <SearchField id="searchField" search=".onSearch" width="20%"/>
+                    <SearchField id="searchField" search=".onSearch" liveChange=".onSearch" width="20%" placeholder="Search projects..."/>
                     <DateRangeSelection id="dateRangeFilter" change=".onDateRangeFilterChange" placeholder="Date range" width="20%" valueFormat="yyyy-MM-dd" displayFormat="medium"/>
                     <Button text="{i18n>submitMonth}" press=".onSubmitMonth" type="Emphasized"/>
                   </Toolbar>
                 </headerToolbar>
                 <columns>
-                  <Column><Text text="{i18n>Date}"/></Column>
+                  <Column width="30%"><Text text="{i18n>Date}"/></Column>
                   <Column><Text text="{i18n>Project}"/></Column>
-                  <Column><Text text="{i18n>Hours}"/></Column>
-                  <Column><Text text="{i18n>Status}"/></Column>
+                  <Column width="8rem" hAlign="Center"><Text text="{i18n>Hours}"/></Column>
+                  <Column width="10rem" hAlign="Center"><Text text="{i18n>Status}"/></Column>
                   <Column width="3rem"><Text text=""/></Column>
                 </columns>
                 <items>
                   <ColumnListItem type="Navigation" press=".onPress">
                     <cells>
-                      <Text text="{date}"/>
-                      <ObjectIdentifier title="{projectName}" text="{description}"/>
-                      <Text text="{hours}"/>
+                      <HBox alignItems="Center">
+                        <Avatar
+                          initials="{parts:[{path:'date'}], formatter:'.formatDateInitials'}"
+                          displaySize="S"
+                          class="sapUiSmallMarginEnd" />
+                        <ObjectIdentifier
+                          title="{date}"
+                          text="{description}" />
+                      </HBox>
+                      <Text text="{projectName}" />
+                      <ObjectNumber number="{hours}" unit="h" />
                       <ObjectStatus
                         text="{statusText}"
-                        state="{= ${status} === 'D' ? 'None' : ${status} === 'S' ? 'Information' : ${status} === 'A' ? 'Success' : 'Error'}"/>
+                        state="{= ${status} === 'D' ? 'None' : ${status} === 'S' ? 'Information' : ${status} === 'A' ? 'Success' : 'Error'}"
+                        inverted="true" />
                       <Button
                         icon="sap-icon://alert"
                         visible="false"
@@ -127,16 +189,22 @@
                   </Toolbar>
                 </headerToolbar>
                 <columns>
-                  <Column><Text text="{i18n>Project}"/></Column>
-                  <Column><Text text="{i18n>Hours}"/></Column>
-                  <Column><Text text="{i18n>entryCount}"/></Column>
+                  <Column width="30%"><Text text="{i18n>Project}"/></Column>
+                  <Column width="10rem" hAlign="Center"><Text text="{i18n>Hours}"/></Column>
+                  <Column width="10rem" hAlign="Center"><Text text="{i18n>entryCount}"/></Column>
                 </columns>
                 <items>
                   <ColumnListItem>
                     <cells>
-                      <Text text="{projectName}"/>
-                      <Text text="{totalHours}"/>
-                      <Text text="{entryCount}"/>
+                      <HBox alignItems="Center">
+                        <Avatar
+                          initials="{parts:[{path:'projectName'}], formatter:'.formatProjectInitials'}"
+                          displaySize="S"
+                          class="sapUiSmallMarginEnd" />
+                        <ObjectIdentifier title="{projectName}" />
+                      </HBox>
+                      <ObjectNumber number="{totalHours}" unit="h" />
+                      <ObjectStatus text="{entryCount}" inverted="true" />
                     </cells>
                   </ColumnListItem>
                 </items>
@@ -158,17 +226,17 @@
               <columns>
                 <Column><Text text="{i18n>year}"/></Column>
                 <Column><Text text="{i18n>month}"/></Column>
-                <Column><Text text="{i18n>Hours}"/></Column>
-                <Column><Text text="{i18n>entryCount}"/></Column>
-                <Column><Text text="Progress"/></Column>
+                <Column width="10rem" hAlign="Center"><Text text="{i18n>Hours}"/></Column>
+                <Column width="10rem" hAlign="Center"><Text text="{i18n>entryCount}"/></Column>
+                <Column width="12rem"><Text text="Progress"/></Column>
               </columns>
               <items>
                 <ColumnListItem>
                   <cells>
                     <Text text="{year}"/>
                     <Text text="{month}"/>
-                    <Text text="{totalHours}"/>
-                    <Text text="{entryCount}"/>
+                    <ObjectNumber number="{totalHours}" unit="h" />
+                    <ObjectStatus text="{entryCount}" inverted="true" state="Information" />
                     <ProgressIndicator
                       displayValue="{totalHours}h"
                       percentValue="{= (${totalHours} / 160) * 100 }"
@@ -181,6 +249,6 @@
           </IconTabFilter>
         </items>
       </IconTabBar>
-    </content>
-  </Page>
+    </f:content>
+  </f:DynamicPage>
 </mvc:View>

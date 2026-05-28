@@ -30,6 +30,11 @@ sap.ui.define([
       } else {
         this.getOwnerComponent().getRouter().navTo("MyTimeEntriesList", {}, true);
       }
+    },
+
+    formatProjectInitials: function (sName) {
+      if (!sName) return "?";
+      return sName.substring(0, 2).toUpperCase();
     }
   });
 });

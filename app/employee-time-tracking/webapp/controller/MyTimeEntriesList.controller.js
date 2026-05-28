@@ -31,6 +31,9 @@ sap.ui.define([
       this._oStatusCountModel = new JSONModel({all: 0, draft: 0, submitted: 0, approved: 0, rejected: 0});
       this.getView().setModel(this._oStatusCountModel, "statusCountModel");
 
+      this._oKpiModel = new JSONModel({totalEntries: 0, totalHours: 0, approvedHours: 0, draftCount: 0});
+      this.getView().setModel(this._oKpiModel, "kpiModel");
+
       this.getOwnerComponent().getRouter().getRoute("MyTimeEntriesList").attachPatternMatched(this._onRouteMatched, this);
 
       this._oNotificationModel = new JSONModel({count: 0});
@@ -93,6 +96,57 @@ sap.ui.define([
       this._updateWeekChart();
       this._updateStatusCountsAsync();
       this._updateRejectionButtonVisibility();
+      this._updateKPIs();
+    },
+
+    _updateKPIs: function () {
+      var oTable = this.getView().byId("timeEntriesTable");
+      if (!oTable) return;
+      var oBinding = oTable.getBinding("items");
+      if (!oBinding) return;
+
+      var iLength = oBinding.getLength ? oBinding.getLength() : 0;
+      var aContexts = [];
+      if (oBinding.getAllCurrentContexts) {
+        aContexts = oBinding.getAllCurrentContexts();
+      } else if (oBinding.getContexts) {
+        aContexts = oBinding.getContexts(0, iLength);
+      }
+
+      var iTotalHours = 0;
+      var iApprovedHours = 0;
+      var iDraftCount = 0;
+
+      aContexts.forEach(function (oCtx) {
+        if (!oCtx) return;
+        var fHours = parseFloat(oCtx.getProperty("hours")) || 0;
+        var sStatus = oCtx.getProperty("status");
+        iTotalHours += fHours;
+        if (sStatus === "A") {
+          iApprovedHours += fHours;
+        }
+        if (sStatus === "D") {
+          iDraftCount++;
+        }
+      });
+
+      this._oKpiModel.setData({
+        totalEntries: aContexts.length,
+        totalHours: iTotalHours,
+        approvedHours: iApprovedHours,
+        draftCount: iDraftCount
+      });
+    },
+
+    formatDateInitials: function (sDate) {
+      if (!sDate) return "?";
+      var aParts = sDate.split("-");
+      return aParts.length >= 3 ? aParts[2] : "?";
+    },
+
+    formatProjectInitials: function (sName) {
+      if (!sName) return "?";
+      return sName.substring(0, 2).toUpperCase();
     },
 
     _updateStatusCountsAsync: function () {
