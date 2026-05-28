@@ -1,10 +1,45 @@
 "use strict";
 
-const { cds, EMP1_ID, PROJECT_CP, PROJECT_MOBILE } = require("./helpers");
+const { cds, EMP1_ID, PROJECT_CP, PROJECT_ERP, PROJECT_MOBILE } = require("./helpers");
 const { PendingHoursReminder } = require("../srv/jobs/pending-hours-reminder");
 const { OutboxProcessor } = require("../srv/handlers/shared/outbox-processor");
 
 describe("PendingHoursReminder", () => {
+  beforeAll(async () => {
+    // Seed submitted entries for April (previous month to May)
+    await cds.run(
+      INSERT.into("my.billing.TimeEntries").entries([
+        // MGR1 projects: Customer Portal (5 entries) + Mobile (1 entry)
+        { ID: "70000000-0000-0000-0000-000000000200", date: "2026-04-01", hours: 1, description: "P1", status: "S", rateSnapshot: 45, employee_ID: EMP1_ID, project_ID: PROJECT_CP, month: 4, year: 2026, isOvertime: false },
+        { ID: "70000000-0000-0000-0000-000000000201", date: "2026-04-02", hours: 1, description: "P2", status: "S", rateSnapshot: 45, employee_ID: EMP1_ID, project_ID: PROJECT_CP, month: 4, year: 2026, isOvertime: false },
+        { ID: "70000000-0000-0000-0000-000000000202", date: "2026-04-03", hours: 1, description: "P3", status: "S", rateSnapshot: 45, employee_ID: EMP1_ID, project_ID: PROJECT_CP, month: 4, year: 2026, isOvertime: false },
+        { ID: "70000000-0000-0000-0000-000000000203", date: "2026-04-04", hours: 1, description: "P4", status: "S", rateSnapshot: 45, employee_ID: EMP1_ID, project_ID: PROJECT_CP, month: 4, year: 2026, isOvertime: false },
+        { ID: "70000000-0000-0000-0000-000000000204", date: "2026-04-05", hours: 1, description: "P5", status: "S", rateSnapshot: 45, employee_ID: EMP1_ID, project_ID: PROJECT_CP, month: 4, year: 2026, isOvertime: false },
+        { ID: "70000000-0000-0000-0000-000000000205", date: "2026-04-06", hours: 1, description: "M1", status: "S", rateSnapshot: 45, employee_ID: EMP1_ID, project_ID: PROJECT_MOBILE, month: 4, year: 2026, isOvertime: false },
+        // MGR2 project: ERP Migration (2 entries)
+        { ID: "70000000-0000-0000-0000-000000000206", date: "2026-04-07", hours: 1, description: "E1", status: "S", rateSnapshot: 45, employee_ID: EMP1_ID, project_ID: PROJECT_ERP, month: 4, year: 2026, isOvertime: false },
+        { ID: "70000000-0000-0000-0000-000000000207", date: "2026-04-08", hours: 1, description: "E2", status: "S", rateSnapshot: 45, employee_ID: EMP1_ID, project_ID: PROJECT_ERP, month: 4, year: 2026, isOvertime: false },
+      ]),
+    );
+  });
+
+  afterAll(async () => {
+    await cds.run(
+      DELETE.from("my.billing.TimeEntries").where({
+        ID: { in: [
+          "70000000-0000-0000-0000-000000000200",
+          "70000000-0000-0000-0000-000000000201",
+          "70000000-0000-0000-0000-000000000202",
+          "70000000-0000-0000-0000-000000000203",
+          "70000000-0000-0000-0000-000000000204",
+          "70000000-0000-0000-0000-000000000205",
+          "70000000-0000-0000-0000-000000000206",
+          "70000000-0000-0000-0000-000000000207",
+        ]},
+      }),
+    );
+  });
+
   afterEach(async () => {
     jest.clearAllMocks();
     await cds.run(

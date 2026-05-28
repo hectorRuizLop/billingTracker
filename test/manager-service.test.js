@@ -22,6 +22,37 @@ const {
 describe("ManagerService", () => {
   const BASE = "/api/manager";
 
+  beforeAll(async () => {
+    // Seed time entries required by computed-field tests
+    await cds.run(
+      INSERT.into("my.billing.TimeEntries").entries([
+        // PROJECT_CP: 6h approved (270) + 35h submitted (1575) = 41 projected
+        { ID: "70000000-0000-0000-0000-000000000100", date: "2026-03-01", hours: 2, description: "A1", status: "A", rateSnapshot: 45, employee_ID: EMP1_ID, project_ID: PROJECT_CP, month: 3, year: 2026, isOvertime: false },
+        { ID: "70000000-0000-0000-0000-000000000101", date: "2026-03-02", hours: 4, description: "A2", status: "A", rateSnapshot: 45, employee_ID: EMP1_ID, project_ID: PROJECT_CP, month: 3, year: 2026, isOvertime: false },
+        { ID: "70000000-0000-0000-0000-000000000102", date: "2026-03-03", hours: 5, description: "S1", status: "S", rateSnapshot: 45, employee_ID: EMP1_ID, project_ID: PROJECT_CP, month: 3, year: 2026, isOvertime: false },
+        { ID: "70000000-0000-0000-0000-000000000103", date: "2026-03-04", hours: 10, description: "S2", status: "S", rateSnapshot: 45, employee_ID: EMP1_ID, project_ID: PROJECT_CP, month: 3, year: 2026, isOvertime: false },
+        { ID: "70000000-0000-0000-0000-000000000104", date: "2026-03-05", hours: 20, description: "S3", status: "S", rateSnapshot: 45, employee_ID: EMP2.username, project_ID: PROJECT_CP, month: 3, year: 2026, isOvertime: false },
+        // PROJECT_MOBILE: 6.5h submitted (357.5), 0 approved
+        { ID: "70000000-0000-0000-0000-000000000105", date: "2026-03-06", hours: 6.5, description: "S4", status: "S", rateSnapshot: 55, employee_ID: EMP1_ID, project_ID: "40000000-0000-0000-0000-000000000003", month: 3, year: 2026, isOvertime: false },
+      ]),
+    );
+  });
+
+  afterAll(async () => {
+    await cds.run(
+      DELETE.from("my.billing.TimeEntries").where({
+        ID: { in: [
+          "70000000-0000-0000-0000-000000000100",
+          "70000000-0000-0000-0000-000000000101",
+          "70000000-0000-0000-0000-000000000102",
+          "70000000-0000-0000-0000-000000000103",
+          "70000000-0000-0000-0000-000000000104",
+          "70000000-0000-0000-0000-000000000105",
+        ]},
+      }),
+    );
+  });
+
   test("MGR1 sees only projects they manage", async () => {
     const { data, status } = await GET(`${BASE}/Projects`, { auth: MGR1 });
     expect(status).toBe(200);

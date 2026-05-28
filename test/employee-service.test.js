@@ -147,6 +147,23 @@ describe("EmployeeService", () => {
 describe("TimeEntry Validations", () => {
   const BASE = "/api/employee";
 
+  beforeAll(async () => {
+    // Seed the submitted entry that tests assume exists
+    await cds.run(
+      INSERT.into("my.billing.TimeEntries").entries({
+        ID: TIME_ENTRY_SUBMITTED_EMP1,
+        date: "2026-04-01",
+        hours: 8,
+        description: "Submitted seed entry",
+        status: "S",
+        employee_ID: EMP1_ID,
+        project_ID: PROJECT_CP,
+        month: 4,
+        year: 2026,
+      }),
+    );
+  });
+
   test("Rejects time entry on a weekend", async () => {
     const { status, data } = await POST(
       `${BASE}/MyTimeEntries`,

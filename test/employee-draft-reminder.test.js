@@ -10,6 +10,32 @@ describe("EmployeeDraftReminder", () => {
   let logInfoMock;
   let logErrorMock;
 
+  beforeAll(async () => {
+    // Seed a draft entry for EMP2 in April so the reminder has something to find
+    await cds.run(
+      INSERT.into("my.billing.TimeEntries").entries({
+        ID: "70000000-0000-0000-0000-000000000300",
+        date: "2026-04-18",
+        hours: 2,
+        description: "Seed draft",
+        status: "D",
+        employee_ID: EMP2_ID,
+        project_ID: PROJECT_CP,
+        month: 4,
+        year: 2026,
+        isOvertime: false,
+      }),
+    );
+  });
+
+  afterAll(async () => {
+    await cds.run(
+      DELETE.from("my.billing.TimeEntries").where({
+        ID: "70000000-0000-0000-0000-000000000300",
+      }),
+    );
+  });
+
   beforeEach(() => {
     logInfoMock = jest.fn();
     logErrorMock = jest.fn();
