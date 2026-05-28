@@ -21,6 +21,17 @@ sap.ui.define([
 
       this.getOwnerComponent().getRouter().getRoute("EmployeeList").attachPatternMatched(this._onRouteMatched, this);
 
+      // Register filter handlers after view is rendered
+      this.getView().addEventDelegate({
+        onAfterRendering: function () {
+          var oRoleFilter = this.byId("roleFilter");
+          if (oRoleFilter && !oRoleFilter._filterHandlerAttached) {
+            oRoleFilter.attachSelect(this.onRoleFilterChange, this);
+            oRoleFilter._filterHandlerAttached = true;
+          }
+        }.bind(this)
+      });
+
       // Fetch KPI stats after model is ready
       setTimeout(this._fetchEmployeeStats.bind(this), 1000);
     },
@@ -92,8 +103,14 @@ sap.ui.define([
       this._applyFilters();
     },
 
+    onSearchLiveChange: function (oEvent) {
+      this._sSearchQuery = oEvent.getParameter("newValue");
+      this._applyFilters();
+    },
+
     onRoleFilterChange: function (oEvent) {
-      this._sRole = oEvent.getParameter("key");
+      var oSegBtn = this.getView().byId("roleFilter");
+      this._sRole = oSegBtn.getSelectedKey();
       this._applyFilters();
     },
 
@@ -107,7 +124,7 @@ sap.ui.define([
       if (this._sSearchQuery) {
         aFilters.push(new Filter("fullName", FilterOperator.Contains, this._sSearchQuery));
       }
-      if (this._sRole) {
+      if (this._sRole && this._sRole !== "all") {
         aFilters.push(new Filter("role", FilterOperator.EQ, this._sRole));
       }
       if (this._bActiveOnly) {

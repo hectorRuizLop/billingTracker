@@ -55,9 +55,9 @@
       <VBox>
         <!-- Filter Toolbar -->
         <Toolbar class="sapUiSmallMargin">
-          <SearchField id="searchField" search=".onSearch" width="25%" placeholder="Search employees..." />
+          <SearchField id="searchField" search=".onSearch" liveChange=".onSearchLiveChange" width="25%" placeholder="Search employees..." />
           <ToolbarSpacer />
-          <SegmentedButton id="roleFilter" selectedKey="all" selectionChange=".onRoleFilterChange">
+          <SegmentedButton id="roleFilter" selectedKey="all" select=".onRoleFilterChange">
             <items>
               <SegmentedButtonItem key="all" text="All ({filterCountModel>/all})" />
               <SegmentedButtonItem key="E" text="Employee ({filterCountModel>/employee})" />
