@@ -5,6 +5,8 @@
   <FlexibleColumnLayout id="appFCL" layout="OneColumn" backgroundDesign="Solid">
     <beginColumnPages>
       <mvc:XMLView id="beginView" viewName="nubexx.billing.employee.view.MyTimeEntriesList"/>
+      <mvc:XMLView id="calendarView" viewName="nubexx.billing.employee.view.MyCalendar"/>
+      <mvc:XMLView id="notificationsView" viewName="nubexx.billing.employee.view.MyNotifications"/>
     </beginColumnPages>
     <midColumnPages>
       <mvc:XMLView id="midView" viewName="nubexx.billing.employee.view.MyTimeEntriesDetail"/>

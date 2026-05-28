@@ -31,6 +31,19 @@ module.exports = class EmployeeService extends cds.ApplicationService {
       "MyMonthlySummary",
       handlers.employee.entities.summary.onReadMyMonthlySummary,
     );
+    this.on(
+      "getCalendarDays",
+      handlers.employee.entities.calendar.onGetCalendarDays,
+    );
+    this.on(
+      "READ",
+      "MyNotifications",
+      handlers.employee.entities.notifications.onReadMyNotifications,
+    );
+    this.on(
+      "markNotificationRead",
+      handlers.employee.entities.notifications.markNotificationRead,
+    );
     return super.init();
   }
 };
